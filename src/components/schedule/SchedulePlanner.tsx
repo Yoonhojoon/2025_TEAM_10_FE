@@ -1,7 +1,10 @@
+
 import React, { useState } from "react";
 import { Button } from "@/components/common/Button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/common/Card";
 import { AlertCircle, Clock, Copy, Plus, Save, Trash2 } from "lucide-react";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { useToast } from "@/hooks/use-toast";
 
 interface ScheduleCourse {
   id: string;
@@ -34,6 +37,10 @@ interface SchedulePlannerProps {
   onDeleteCourse: (id: string) => void;
 }
 
+const MAX_CREDITS_PER_SEMESTER = 21; // 학기당 최대 학점
+const MIN_CREDITS_PER_SEMESTER = 12; // 학기당 최소 학점 (권장)
+const MAX_COURSES_PER_DAY = 4; // 하루 최대 과목 수
+
 const SchedulePlanner = ({ 
   courses,
   onAddCourse,
@@ -49,6 +56,7 @@ const SchedulePlanner = ({
     location: "",
     credit: 3
   });
+  const { toast } = useToast();
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -59,6 +67,38 @@ const SchedulePlanner = ({
   };
   
   const handleAddCourse = () => {
+    // Check for all potential errors before adding
+    const timeConflict = hasTimeConflict(newCourse.startTime, newCourse.endTime, newCourse.day);
+    const creditOverload = wouldExceedCreditLimit(newCourse.credit);
+    const courseOverload = wouldExceedDailyCourseLimit(newCourse.day);
+    
+    if (timeConflict) {
+      toast({
+        title: "시간 충돌",
+        description: "선택한 시간에 이미 다른 과목이 존재합니다.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (creditOverload) {
+      toast({
+        title: "학점 초과",
+        description: `학기당 최대 ${MAX_CREDITS_PER_SEMESTER}학점을 초과할 수 없습니다.`,
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (courseOverload) {
+      toast({
+        title: "하루 과목 수 초과",
+        description: `${dayLabels[newCourse.day as keyof typeof dayLabels]}에 이미 ${MAX_COURSES_PER_DAY}개의 과목이 있습니다.`,
+        variant: "destructive"
+      });
+      return;
+    }
+    
     onAddCourse(newCourse);
     setNewCourse({
       name: "",
@@ -70,6 +110,11 @@ const SchedulePlanner = ({
       credit: 3
     });
     setIsAdding(false);
+    
+    toast({
+      title: "과목 추가 완료",
+      description: `${newCourse.name} 과목이 시간표에 추가되었습니다.`
+    });
   };
   
   const getTimeSlotPosition = (time: string) => {
@@ -115,7 +160,39 @@ const SchedulePlanner = ({
     });
   };
   
+  const wouldExceedCreditLimit = (additionalCredits: number) => {
+    const currentCredits = courses.reduce((total, course) => total + course.credit, 0);
+    return currentCredits + additionalCredits > MAX_CREDITS_PER_SEMESTER;
+  };
+  
+  const wouldExceedDailyCourseLimit = (day: string) => {
+    const coursesForDay = courses.filter(course => course.day === day);
+    return coursesForDay.length >= MAX_COURSES_PER_DAY;
+  };
+  
   const timeConflict = hasTimeConflict(newCourse.startTime, newCourse.endTime, newCourse.day);
+  const creditOverload = wouldExceedCreditLimit(newCourse.credit);
+  const courseOverload = wouldExceedDailyCourseLimit(newCourse.day);
+  
+  // Check if we have courses in courses array with the same time but different days
+  const hasDuplicateTimes = courses.some((course1, index) => {
+    return courses.some((course2, idx) => {
+      if (index === idx) return false; // Skip same course
+      return course1.startTime === course2.startTime && 
+             course1.endTime === course2.endTime && 
+             course1.day !== course2.day;
+    });
+  });
+  
+  // Count courses per day for warning display
+  const coursesPerDay = days.reduce((acc, day) => {
+    acc[day] = courses.filter(course => course.day === day).length;
+    return acc;
+  }, {} as Record<string, number>);
+  
+  // Check total credits
+  const totalCredits = courses.reduce((total, course) => total + course.credit, 0);
+  const isBelowRecommendedCredits = totalCredits < MIN_CREDITS_PER_SEMESTER && courses.length > 0;
   
   return (
     <Card>
@@ -142,7 +219,7 @@ const SchedulePlanner = ({
       </CardHeader>
       <CardContent>
         <div className="mb-4 flex justify-between items-center">
-          <h3 className="text-lg font-medium">2023년 2학기 시간표</h3>
+          <h3 className="text-lg font-medium">2024년 1학기 시간표</h3>
           <Button 
             size="sm"
             variant="outline"
@@ -153,15 +230,47 @@ const SchedulePlanner = ({
           </Button>
         </div>
         
+        {/* Schedule warnings */}
+        {(hasDuplicateTimes || isBelowRecommendedCredits || totalCredits > MAX_CREDITS_PER_SEMESTER) && (
+          <Alert className="mb-4" variant={totalCredits > MAX_CREDITS_PER_SEMESTER ? "destructive" : "default"}>
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>시간표 문제 발견</AlertTitle>
+            <AlertDescription>
+              <ul className="list-disc pl-5 space-y-1 mt-2">
+                {hasDuplicateTimes && (
+                  <li>동일한 시간대에 다른 요일에 수업이 있습니다. 이는 불가능한 시간표입니다.</li>
+                )}
+                {isBelowRecommendedCredits && (
+                  <li>현재 {totalCredits}학점으로 한 학기 권장 최소학점({MIN_CREDITS_PER_SEMESTER}학점)보다 적습니다.</li>
+                )}
+                {totalCredits > MAX_CREDITS_PER_SEMESTER && (
+                  <li>총 {totalCredits}학점으로 한 학기 최대학점({MAX_CREDITS_PER_SEMESTER}학점)을 초과했습니다.</li>
+                )}
+                {Object.entries(coursesPerDay).map(([day, count]) => (
+                  count > MAX_COURSES_PER_DAY - 1 && (
+                    <li key={day}>
+                      {dayLabels[day as keyof typeof dayLabels]}에 과목 수({count}개)가 많습니다. 하루에 {MAX_COURSES_PER_DAY}개 이하가 권장됩니다.
+                    </li>
+                  )
+                ))}
+              </ul>
+            </AlertDescription>
+          </Alert>
+        )}
+        
         {isAdding && (
           <div className="mb-6 p-4 rounded-lg border bg-secondary/30 animate-scale-in">
             <h4 className="font-medium mb-3">새 과목 추가</h4>
-            {timeConflict && (
+            {(timeConflict || creditOverload || courseOverload) && (
               <div className="mb-4 p-3 rounded-md bg-red-50 border border-red-200 text-red-700 flex items-start">
                 <AlertCircle className="h-5 w-5 mr-2 flex-shrink-0 mt-0.5" />
                 <div>
-                  <p className="font-medium">시간 충돌 발생</p>
-                  <p className="text-sm">선택한 시간에 이미 다른 과목이 존재합니다.</p>
+                  <p className="font-medium">다음 문제가 있습니다:</p>
+                  <ul className="pl-5 list-disc mt-1 space-y-1">
+                    {timeConflict && <li>시간 충돌: 선택한 시간에 이미 다른 과목이 존재합니다.</li>}
+                    {creditOverload && <li>학점 초과: 학기당 최대 {MAX_CREDITS_PER_SEMESTER}학점을 초과할 수 없습니다.</li>}
+                    {courseOverload && <li>과목 수 초과: {dayLabels[newCourse.day as keyof typeof dayLabels]}에 이미 {MAX_COURSES_PER_DAY}개의 과목이 있습니다.</li>}
+                  </ul>
                 </div>
               </div>
             )}
@@ -258,7 +367,10 @@ const SchedulePlanner = ({
               <Button variant="outline" onClick={() => setIsAdding(false)}>
                 취소
               </Button>
-              <Button onClick={handleAddCourse} disabled={timeConflict}>
+              <Button 
+                onClick={handleAddCourse} 
+                disabled={timeConflict || creditOverload || courseOverload || !newCourse.name || !newCourse.code}
+              >
                 추가
               </Button>
             </div>
@@ -326,7 +438,7 @@ const SchedulePlanner = ({
         </div>
         
         <div className="mt-6">
-          <h4 className="font-medium mb-2">등록된 과목 (총 {courses.reduce((acc, course) => acc + course.credit, 0)}학점)</h4>
+          <h4 className="font-medium mb-2">등록된 과목 (총 {totalCredits}학점)</h4>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {courses.map(course => (
               <div 
