@@ -87,8 +87,10 @@ const SchedulePlanner = ({
     const duration = endSlot - startSlot;
     
     return {
-      gridColumn: `${dayIndex + 2}`,
-      gridRow: `${startSlot + 2} / span ${duration}`,
+      gridColumnStart: dayIndex + 2,
+      gridColumnEnd: dayIndex + 3,
+      gridRowStart: startSlot + 2,
+      gridRowEnd: startSlot + 2 + duration,
       backgroundColor: getCourseColor(course.code),
     };
   };
@@ -269,58 +271,68 @@ const SchedulePlanner = ({
         )}
         
         <div className="overflow-x-auto pb-2">
-          <div className="min-w-[800px] grid grid-cols-[auto_repeat(5,_1fr)] grid-rows-[auto_repeat(11,_minmax(60px,_1fr))] gap-1 bg-secondary/30 rounded-lg p-2">
-            {/* Header row with days */}
-            <div className="bg-transparent h-12 flex items-center justify-center font-medium">
-              <Clock className="h-5 w-5 text-muted-foreground" />
-            </div>
-            {days.map(day => (
-              <div 
-                key={day} 
-                className="bg-secondary h-12 rounded-md flex items-center justify-center font-medium"
-              >
-                {dayLabels[day as keyof typeof dayLabels]}
+          {/* 시간표 그리드 - 수정됨 */}
+          <div className="min-w-[800px] border rounded-lg bg-secondary/30 p-2 overflow-hidden">
+            <div 
+              className="grid grid-cols-[100px_repeat(5,_1fr)] w-full relative" 
+              style={{ 
+                display: "grid",
+                gridTemplateColumns: "100px repeat(5, 1fr)",
+                gridAutoRows: "60px" 
+              }}
+            >
+              {/* 헤더 행 (요일) */}
+              <div className="bg-transparent h-12 flex items-center justify-center font-medium">
+                <Clock className="h-5 w-5 text-muted-foreground" />
               </div>
-            ))}
-            
-            {/* Time slots */}
-            {timeSlots.map((time, index) => (
-              <div
-                key={time}
-                className="bg-transparent flex items-center justify-center text-sm text-muted-foreground"
-              >
-                {time}
-              </div>
-            ))}
-            
-            {/* Empty cells for the grid */}
-            {Array.from({ length: 55 }).map((_, index) => (
-              <div
-                key={`cell-${index}`}
-                className="bg-card/70 rounded-md border border-border/50 min-h-[60px]"
-              />
-            ))}
-            
-            {/* Courses */}
-            {courses.map((course) => (
-              <div
-                key={course.id}
-                style={getCourseStyle(course)}
-                className="absolute rounded-md border border-primary/20 shadow-sm p-2 overflow-hidden transition-all hover:shadow-md z-10"
-              >
-                <div className="font-medium text-sm truncate">{course.name}</div>
-                <div className="text-xs text-foreground/70 mt-1 truncate">{course.location}</div>
-                <div className="text-xs text-foreground/70 truncate">
-                  {course.startTime} - {course.endTime}
-                </div>
-                <button
-                  onClick={() => onDeleteCourse(course.id)}
-                  className="absolute top-1 right-1 text-foreground/40 hover:text-red-500 transition-colors"
+              {days.map(day => (
+                <div 
+                  key={day} 
+                  className="bg-secondary h-12 rounded-md flex items-center justify-center font-medium"
                 >
-                  <Trash2 size={14} />
-                </button>
-              </div>
-            ))}
+                  {dayLabels[day as keyof typeof dayLabels]}
+                </div>
+              ))}
+              
+              {/* 시간대 행 */}
+              {timeSlots.map((time, index) => (
+                <React.Fragment key={`row-${time}`}>
+                  {/* 시간 레이블 */}
+                  <div className="bg-transparent flex items-center justify-center text-sm text-muted-foreground h-full border-t border-border/30">
+                    {time}
+                  </div>
+                  
+                  {/* 요일별 셀 */}
+                  {days.map((day, dayIndex) => (
+                    <div
+                      key={`cell-${day}-${time}`}
+                      className="bg-card/70 rounded-md border border-border/50 h-full"
+                    />
+                  ))}
+                </React.Fragment>
+              ))}
+              
+              {/* 과목 */}
+              {courses.map((course) => (
+                <div
+                  key={course.id}
+                  style={getCourseStyle(course)}
+                  className="absolute rounded-md border border-primary/20 shadow-sm p-2 overflow-hidden transition-all hover:shadow-md z-10 m-1"
+                >
+                  <div className="font-medium text-sm truncate">{course.name}</div>
+                  <div className="text-xs text-foreground/70 mt-1 truncate">{course.location}</div>
+                  <div className="text-xs text-foreground/70 truncate">
+                    {course.startTime} - {course.endTime}
+                  </div>
+                  <button
+                    onClick={() => onDeleteCourse(course.id)}
+                    className="absolute top-1 right-1 text-foreground/40 hover:text-red-500 transition-colors"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
         
