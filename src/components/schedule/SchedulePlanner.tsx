@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Button } from "@/components/common/Button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/common/Card";
@@ -129,12 +130,13 @@ const SchedulePlanner = ({
     const startRow = startHour - 9 + 2;
     const rowSpan = endHour - startHour;
     
-    const endRow = startRow + rowSpan;
-    
     return {
       gridColumn: `${dayIndex + 2}`,
-      gridRow: `${startRow} / ${endRow + 1}`,
+      gridRow: `${startRow} / ${startRow + rowSpan}`,
       backgroundColor: getCourseColor(course.code),
+      width: "calc(100% - 8px)", // Fill the width of the container minus margin
+      height: "calc(100% - 4px)", // Fill the height minus margin
+      margin: "2px 4px",
     };
   };
   
@@ -399,7 +401,7 @@ const SchedulePlanner = ({
               
               {timeSlots.map((time, index) => (
                 <React.Fragment key={`row-${time}`}>
-                  <div className="bg-transparent flex items-center justify-center text-sm text-muted-foreground border-t border-border/30 pt-1">
+                  <div className="bg-transparent flex items-center justify-start pt-1 pl-2 text-sm text-muted-foreground">
                     {time}-{(parseInt(time.split(':')[0]) + 1).toString().padStart(2, '0')}:00
                   </div>
                   
@@ -416,7 +418,7 @@ const SchedulePlanner = ({
                 <div
                   key={course.id}
                   style={getCourseStyle(course)}
-                  className="absolute rounded-md border border-primary/20 shadow-sm p-2 overflow-hidden transition-all hover:shadow-md z-10 m-0.5"
+                  className="absolute rounded-md border border-primary/20 shadow-sm p-2 overflow-hidden transition-all hover:shadow-md z-10"
                 >
                   <div className="font-medium text-sm truncate">{course.name}</div>
                   <div className="text-xs text-foreground/70 mt-1 truncate">{course.location}</div>
