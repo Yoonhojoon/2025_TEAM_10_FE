@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Button } from "@/components/common/Button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/common/Card";
@@ -67,7 +66,6 @@ const SchedulePlanner = ({
   };
   
   const handleAddCourse = () => {
-    // Check for all potential errors before adding
     const timeConflict = hasTimeConflict(newCourse.startTime, newCourse.endTime, newCourse.day);
     const creditOverload = wouldExceedCreditLimit(newCourse.credit);
     const courseOverload = wouldExceedDailyCourseLimit(newCourse.day);
@@ -124,15 +122,18 @@ const SchedulePlanner = ({
   
   const getCourseStyle = (course: ScheduleCourse) => {
     const dayIndex = days.indexOf(course.day);
-    const startSlot = getTimeSlotPosition(course.startTime);
-    const endSlot = getTimeSlotPosition(course.endTime);
-    const duration = endSlot - startSlot;
+    
+    const startHour = parseInt(course.startTime.split(":")[0]);
+    const endHour = parseInt(course.endTime.split(":")[0]);
+    
+    const startRow = startHour - 9 + 2;
+    const rowSpan = endHour - startHour;
+    
+    const endRow = startRow + rowSpan;
     
     return {
-      gridColumnStart: dayIndex + 2,
-      gridColumnEnd: dayIndex + 3,
-      gridRowStart: startSlot + 2,
-      gridRowEnd: startSlot + 2 + duration,
+      gridColumn: `${dayIndex + 2}`,
+      gridRow: `${startRow} / ${endRow + 1}`,
       backgroundColor: getCourseColor(course.code),
     };
   };
@@ -174,23 +175,20 @@ const SchedulePlanner = ({
   const creditOverload = wouldExceedCreditLimit(newCourse.credit);
   const courseOverload = wouldExceedDailyCourseLimit(newCourse.day);
   
-  // Check if we have courses in courses array with the same time but different days
   const hasDuplicateTimes = courses.some((course1, index) => {
     return courses.some((course2, idx) => {
-      if (index === idx) return false; // Skip same course
+      if (index === idx) return false;
       return course1.startTime === course2.startTime && 
              course1.endTime === course2.endTime && 
              course1.day !== course2.day;
     });
   });
   
-  // Count courses per day for warning display
   const coursesPerDay = days.reduce((acc, day) => {
     acc[day] = courses.filter(course => course.day === day).length;
     return acc;
   }, {} as Record<string, number>);
   
-  // Check total credits
   const totalCredits = courses.reduce((total, course) => total + course.credit, 0);
   const isBelowRecommendedCredits = totalCredits < MIN_CREDITS_PER_SEMESTER && courses.length > 0;
   
@@ -230,7 +228,6 @@ const SchedulePlanner = ({
           </Button>
         </div>
         
-        {/* Schedule warnings */}
         {(hasDuplicateTimes || isBelowRecommendedCredits || totalCredits > MAX_CREDITS_PER_SEMESTER) && (
           <Alert className="mb-4" variant={totalCredits > MAX_CREDITS_PER_SEMESTER ? "destructive" : "default"}>
             <AlertCircle className="h-4 w-4" />
@@ -380,16 +377,17 @@ const SchedulePlanner = ({
         <div className="overflow-x-auto pb-2">
           <div className="min-w-[800px] border rounded-lg bg-secondary/30 p-2 overflow-hidden">
             <div 
-              className="grid grid-cols-[100px_repeat(5,_1fr)] w-full relative" 
+              className="grid relative"
               style={{ 
-                display: "grid",
                 gridTemplateColumns: "100px repeat(5, 1fr)",
-                gridAutoRows: "60px" 
+                gridTemplateRows: "auto repeat(11, 60px)",
+                gap: "1px"
               }}
             >
               <div className="bg-transparent h-12 flex items-center justify-center font-medium">
                 <Clock className="h-5 w-5 text-muted-foreground" />
               </div>
+              
               {days.map(day => (
                 <div 
                   key={day} 
@@ -401,11 +399,11 @@ const SchedulePlanner = ({
               
               {timeSlots.map((time, index) => (
                 <React.Fragment key={`row-${time}`}>
-                  <div className="bg-transparent flex items-center justify-center text-sm text-muted-foreground h-full border-t border-border/30">
-                    {time}
+                  <div className="bg-transparent flex items-center justify-center text-sm text-muted-foreground border-t border-border/30 pt-1">
+                    {time}-{(parseInt(time.split(':')[0]) + 1).toString().padStart(2, '0')}:00
                   </div>
                   
-                  {days.map((day, dayIndex) => (
+                  {days.map(day => (
                     <div
                       key={`cell-${day}-${time}`}
                       className="bg-card/70 rounded-md border border-border/50 h-full"
@@ -418,7 +416,7 @@ const SchedulePlanner = ({
                 <div
                   key={course.id}
                   style={getCourseStyle(course)}
-                  className="absolute rounded-md border border-primary/20 shadow-sm p-2 overflow-hidden transition-all hover:shadow-md z-10 m-1"
+                  className="absolute rounded-md border border-primary/20 shadow-sm p-2 overflow-hidden transition-all hover:shadow-md z-10 m-0.5"
                 >
                   <div className="font-medium text-sm truncate">{course.name}</div>
                   <div className="text-xs text-foreground/70 mt-1 truncate">{course.location}</div>
