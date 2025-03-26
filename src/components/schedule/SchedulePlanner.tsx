@@ -1,8 +1,7 @@
-
+import React, { useState } from "react";
 import { Button } from "@/components/common/Button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/common/Card";
 import { AlertCircle, Clock, Copy, Plus, Save, Trash2 } from "lucide-react";
-import { useState } from "react";
 
 interface ScheduleCourse {
   id: string;
@@ -73,13 +72,11 @@ const SchedulePlanner = ({
     setIsAdding(false);
   };
   
-  // Helper to determine time slot position
   const getTimeSlotPosition = (time: string) => {
     const hour = parseInt(time.split(":")[0]);
-    return hour - 9; // Assuming 9:00 is the first slot (position 0)
+    return hour - 9;
   };
   
-  // Convert course to grid position
   const getCourseStyle = (course: ScheduleCourse) => {
     const dayIndex = days.indexOf(course.day);
     const startSlot = getTimeSlotPosition(course.startTime);
@@ -95,14 +92,12 @@ const SchedulePlanner = ({
     };
   };
   
-  // Generate pseudo-random pastel color based on course code
   const getCourseColor = (code: string) => {
     const seed = code.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
     const hue = seed % 360;
     return `hsla(${hue}, 70%, 85%, 0.8)`;
   };
   
-  // Check if the times conflict
   const hasTimeConflict = (newStart: string, newEnd: string, day: string) => {
     return courses.some(course => {
       if (course.day !== day) return false;
@@ -271,7 +266,6 @@ const SchedulePlanner = ({
         )}
         
         <div className="overflow-x-auto pb-2">
-          {/* 시간표 그리드 - 수정됨 */}
           <div className="min-w-[800px] border rounded-lg bg-secondary/30 p-2 overflow-hidden">
             <div 
               className="grid grid-cols-[100px_repeat(5,_1fr)] w-full relative" 
@@ -281,7 +275,6 @@ const SchedulePlanner = ({
                 gridAutoRows: "60px" 
               }}
             >
-              {/* 헤더 행 (요일) */}
               <div className="bg-transparent h-12 flex items-center justify-center font-medium">
                 <Clock className="h-5 w-5 text-muted-foreground" />
               </div>
@@ -294,15 +287,12 @@ const SchedulePlanner = ({
                 </div>
               ))}
               
-              {/* 시간대 행 */}
               {timeSlots.map((time, index) => (
                 <React.Fragment key={`row-${time}`}>
-                  {/* 시간 레이블 */}
                   <div className="bg-transparent flex items-center justify-center text-sm text-muted-foreground h-full border-t border-border/30">
                     {time}
                   </div>
                   
-                  {/* 요일별 셀 */}
                   {days.map((day, dayIndex) => (
                     <div
                       key={`cell-${day}-${time}`}
@@ -312,7 +302,6 @@ const SchedulePlanner = ({
                 </React.Fragment>
               ))}
               
-              {/* 과목 */}
               {courses.map((course) => (
                 <div
                   key={course.id}
