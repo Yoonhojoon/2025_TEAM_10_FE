@@ -1,7 +1,6 @@
-
 import { Button } from "@/components/common/Button";
 import { cn } from "@/lib/utils";
-import { BookOpenCheck, Graduation, Menu, X } from "lucide-react";
+import { BookOpenCheck, GraduationCap, Menu, X } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 
@@ -16,7 +15,6 @@ const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
   
-  // Check if we're on the landing page
   const isLandingPage = location.pathname === "/";
   
   useEffect(() => {
@@ -28,7 +26,6 @@ const Header = () => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
   
-  // Close mobile menu when changing routes
   useEffect(() => {
     setMobileMenuOpen(false);
   }, [location.pathname]);
@@ -43,16 +40,14 @@ const Header = () => {
       )}
     >
       <div className="container mx-auto px-4 flex items-center justify-between">
-        {/* Logo */}
         <Link 
           to="/" 
           className="flex items-center text-2xl font-semibold animate-fade-in"
         >
-          <Graduation className="h-7 w-7 mr-2 text-primary" />
+          <GraduationCap className="h-7 w-7 mr-2 text-primary" />
           <span>GradTrack</span>
         </Link>
         
-        {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center space-x-1 animate-fade-in">
           {!isLandingPage && navItems.map((item) => (
             <Link
@@ -70,7 +65,6 @@ const Header = () => {
           ))}
         </nav>
         
-        {/* Auth Buttons or User Menu */}
         <div className="hidden md:flex items-center space-x-4 animate-fade-in">
           {isLandingPage ? (
             <>
@@ -86,7 +80,6 @@ const Header = () => {
           )}
         </div>
         
-        {/* Mobile Menu Button */}
         <button
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           className="md:hidden p-2 rounded-lg text-foreground"
@@ -95,7 +88,6 @@ const Header = () => {
         </button>
       </div>
       
-      {/* Mobile Menu */}
       {mobileMenuOpen && (
         <div className="md:hidden fixed inset-x-0 top-[65px] bg-background/95 backdrop-blur-md border-b shadow-lg animate-slide-in-top">
           <div className="py-4 px-4 flex flex-col space-y-2">

@@ -3,7 +3,7 @@ import { Button } from "@/components/common/Button";
 import { Card } from "@/components/common/Card";
 import Footer from "@/components/layout/Footer";
 import Header from "@/components/layout/Header";
-import { CheckCircle, ChevronRight, Clock, Graduation, ListChecks, Zap } from "lucide-react";
+import { CheckCircle, ChevronRight, Clock, GraduationCap, ListChecks, Zap } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const features = [
@@ -48,15 +48,15 @@ const Index = () => {
                   GradTrack으로 복잡한 졸업 요건을 간편하게 추적하고, 최적의 수강 계획을 세워보세요.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 animate-fade-in" style={{ animationDelay: "200ms" }}>
-                  <Button
-                    size="lg"
-                    icon={<ChevronRight size={18} />}
-                    iconPosition="right"
-                    as={Link}
-                    to="/dashboard"
-                  >
-                    시작하기
-                  </Button>
+                  <Link to="/dashboard">
+                    <Button
+                      size="lg"
+                      icon={<ChevronRight size={18} />}
+                      iconPosition="right"
+                    >
+                      시작하기
+                    </Button>
+                  </Link>
                   <Button
                     variant="outline"
                     size="lg"
@@ -125,7 +125,7 @@ const Index = () => {
                   <Card key={testimonial} className="p-8 hover-scale" variant="outline">
                     <div className="flex items-center mb-4">
                       <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center">
-                        <Graduation className="h-6 w-6 text-primary" />
+                        <GraduationCap className="h-6 w-6 text-primary" />
                       </div>
                       <div className="ml-4">
                         <h4 className="font-medium">홍길동</h4>
@@ -152,15 +152,15 @@ const Index = () => {
               <p className="text-xl text-muted-foreground mb-8">
                 무료로 시작하고 복잡한 졸업 요건을 쉽게 관리하세요.
               </p>
-              <Button
-                size="lg"
-                icon={<ChevronRight size={18} />}
-                iconPosition="right"
-                as={Link}
-                to="/dashboard"
-              >
-                무료로 시작하기
-              </Button>
+              <Link to="/dashboard">
+                <Button
+                  size="lg"
+                  icon={<ChevronRight size={18} />}
+                  iconPosition="right"
+                >
+                  무료로 시작하기
+                </Button>
+              </Link>
             </div>
           </div>
         </section>

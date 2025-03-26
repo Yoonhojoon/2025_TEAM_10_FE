@@ -1,5 +1,5 @@
 
-import { Graduation } from "lucide-react";
+import { GraduationCap } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const Footer = () => {
@@ -8,7 +8,7 @@ const Footer = () => {
       <div className="container mx-auto px-4 py-8">
         <div className="flex flex-col md:flex-row justify-between items-center">
           <div className="flex items-center mb-6 md:mb-0">
-            <Graduation className="h-6 w-6 mr-2 text-primary" />
+            <GraduationCap className="h-6 w-6 mr-2 text-primary" />
             <span className="text-xl font-semibold">GradTrack</span>
           </div>
           
