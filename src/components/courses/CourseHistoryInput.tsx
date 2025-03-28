@@ -1,8 +1,14 @@
 
-import { Button } from "@/components/common/Button";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/common/Card";
-import { CheckCircle, Edit, PlusCircle, Trash2, Upload } from "lucide-react";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Edit, PlusCircle, Trash2, Calendar } from "lucide-react";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface Course {
   id: string;
@@ -21,6 +27,15 @@ interface CourseHistoryInputProps {
   onUpdateCourse: (id: string, course: Partial<Course>) => void;
 }
 
+interface DbCourse {
+  id: string;
+  code: string;
+  name: string;
+  requirement_type: string;
+  credit: number;
+  department: string;
+}
+
 const CourseHistoryInput = ({ 
   courses,
   onAddCourse,
@@ -37,6 +52,10 @@ const CourseHistoryInput = ({
     semester: "",
     grade: "A+"
   });
+  const [dbCourses, setDbCourses] = useState<DbCourse[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
+  const { toast } = useToast();
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -85,6 +104,68 @@ const CourseHistoryInput = ({
       });
     }
   };
+
+  const handleNavigateToSchedule = () => {
+    navigate('/schedule');
+    toast({
+      title: "시간표 생성",
+      description: "시간표 생성 페이지로 이동했습니다.",
+      duration: 3000,
+    });
+  };
+
+  const fetchCourses = async (department: string, requirementType: string) => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('courses')
+        .select('*')
+        .eq('department', department)
+        .eq('requirement_type', requirementType);
+      
+      if (error) {
+        throw error;
+      }
+      
+      setDbCourses(data || []);
+    } catch (error) {
+      console.error('Error fetching courses:', error);
+      toast({
+        title: "오류 발생",
+        description: "과목 정보를 불러오는데 실패했습니다.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const selectCourseFromDb = (course: DbCourse) => {
+    const mappedCategory = (): "majorRequired" | "majorElective" | "generalRequired" | "generalElective" => {
+      switch (course.requirement_type) {
+        case "major_required": return "majorRequired";
+        case "major_elective": return "majorElective";
+        case "general_required": return "generalRequired";
+        case "general_elective": return "generalElective";
+        default: return "generalElective";
+      }
+    };
+
+    const mappedCourse = {
+      code: course.code,
+      name: course.name,
+      category: mappedCategory(),
+      credit: course.credit,
+      semester: new Date().getFullYear() + "-" + (new Date().getMonth() < 6 ? "1" : "2"),
+      grade: "A+"
+    };
+
+    onAddCourse(mappedCourse);
+    toast({
+      title: "과목 추가",
+      description: `${course.name} 과목이 추가되었습니다.`,
+    });
+  };
   
   return (
     <Card>
@@ -95,19 +176,162 @@ const CourseHistoryInput = ({
         </div>
         <div className="flex space-x-2">
           <Button 
-            size="sm" 
-            variant="outline"
-            icon={<Upload size={16} />}
-          >
-            학점 가져오기
-          </Button>
-          <Button 
             size="sm"
-            icon={<PlusCircle size={16} />}
-            onClick={() => setIsAdding(true)}
+            variant="outline"
+            onClick={handleNavigateToSchedule}
           >
-            과목 추가
+            <Calendar className="mr-2 h-4 w-4" />
+            시간표 생성하기
           </Button>
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button size="sm">
+                <PlusCircle className="mr-2 h-4 w-4" />
+                과목 추가
+              </Button>
+            </SheetTrigger>
+            <SheetContent className="sm:max-w-md">
+              <SheetHeader>
+                <SheetTitle>과목 추가</SheetTitle>
+                <SheetDescription>
+                  아래 카테고리에서 과목을 선택하거나 직접 입력하세요.
+                </SheetDescription>
+              </SheetHeader>
+              
+              <div className="py-4">
+                <Tabs defaultValue="major-required" className="w-full">
+                  <TabsList className="grid grid-cols-4 mb-4">
+                    <TabsTrigger value="major-required" onClick={() => fetchCourses("컴퓨터공학과", "major_required")}>전공필수</TabsTrigger>
+                    <TabsTrigger value="major-elective" onClick={() => fetchCourses("컴퓨터공학과", "major_elective")}>전공선택</TabsTrigger>
+                    <TabsTrigger value="general-required" onClick={() => fetchCourses("공통", "general_required")}>교양필수</TabsTrigger>
+                    <TabsTrigger value="general-elective" onClick={() => fetchCourses("공통", "general_elective")}>교양선택</TabsTrigger>
+                  </TabsList>
+                  
+                  <TabsContent value="major-required" className="mt-0">
+                    {isLoading ? (
+                      <div className="py-8 text-center text-muted-foreground">
+                        과목 정보를 불러오는 중...
+                      </div>
+                    ) : dbCourses.length > 0 ? (
+                      <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-2">
+                        {dbCourses.map(course => (
+                          <div 
+                            key={course.id} 
+                            className="p-3 border rounded-md hover:bg-secondary/50 cursor-pointer transition-colors"
+                            onClick={() => selectCourseFromDb(course)}
+                          >
+                            <div className="font-medium">{course.name}</div>
+                            <div className="text-sm text-muted-foreground flex justify-between">
+                              <span>{course.code}</span>
+                              <span>{course.credit}학점</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="py-8 text-center text-muted-foreground">
+                        등록된 전공필수 과목이 없습니다.
+                      </div>
+                    )}
+                  </TabsContent>
+                  
+                  <TabsContent value="major-elective" className="mt-0">
+                    {isLoading ? (
+                      <div className="py-8 text-center text-muted-foreground">
+                        과목 정보를 불러오는 중...
+                      </div>
+                    ) : dbCourses.length > 0 ? (
+                      <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-2">
+                        {dbCourses.map(course => (
+                          <div 
+                            key={course.id} 
+                            className="p-3 border rounded-md hover:bg-secondary/50 cursor-pointer transition-colors"
+                            onClick={() => selectCourseFromDb(course)}
+                          >
+                            <div className="font-medium">{course.name}</div>
+                            <div className="text-sm text-muted-foreground flex justify-between">
+                              <span>{course.code}</span>
+                              <span>{course.credit}학점</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="py-8 text-center text-muted-foreground">
+                        등록된 전공선택 과목이 없습니다.
+                      </div>
+                    )}
+                  </TabsContent>
+                  
+                  <TabsContent value="general-required" className="mt-0">
+                    {isLoading ? (
+                      <div className="py-8 text-center text-muted-foreground">
+                        과목 정보를 불러오는 중...
+                      </div>
+                    ) : dbCourses.length > 0 ? (
+                      <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-2">
+                        {dbCourses.map(course => (
+                          <div 
+                            key={course.id} 
+                            className="p-3 border rounded-md hover:bg-secondary/50 cursor-pointer transition-colors"
+                            onClick={() => selectCourseFromDb(course)}
+                          >
+                            <div className="font-medium">{course.name}</div>
+                            <div className="text-sm text-muted-foreground flex justify-between">
+                              <span>{course.code}</span>
+                              <span>{course.credit}학점</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="py-8 text-center text-muted-foreground">
+                        등록된 교양필수 과목이 없습니다.
+                      </div>
+                    )}
+                  </TabsContent>
+                  
+                  <TabsContent value="general-elective" className="mt-0">
+                    {isLoading ? (
+                      <div className="py-8 text-center text-muted-foreground">
+                        과목 정보를 불러오는 중...
+                      </div>
+                    ) : dbCourses.length > 0 ? (
+                      <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-2">
+                        {dbCourses.map(course => (
+                          <div 
+                            key={course.id} 
+                            className="p-3 border rounded-md hover:bg-secondary/50 cursor-pointer transition-colors"
+                            onClick={() => selectCourseFromDb(course)}
+                          >
+                            <div className="font-medium">{course.name}</div>
+                            <div className="text-sm text-muted-foreground flex justify-between">
+                              <span>{course.code}</span>
+                              <span>{course.credit}학점</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="py-8 text-center text-muted-foreground">
+                        등록된 교양선택 과목이 없습니다.
+                      </div>
+                    )}
+                  </TabsContent>
+                </Tabs>
+                
+                <div className="mt-6 border-t pt-4">
+                  <Button 
+                    onClick={() => setIsAdding(true)} 
+                    variant="outline" 
+                    className="w-full"
+                  >
+                    직접 과목 추가하기
+                  </Button>
+                </div>
+              </div>
+            </SheetContent>
+          </Sheet>
         </div>
       </CardHeader>
       <CardContent>
@@ -359,18 +583,53 @@ const CourseHistoryInput = ({
                     </span>
                   </td>
                   <td className="px-4 py-3 text-sm text-right space-x-1">
-                    <button
-                      onClick={() => handleStartEdit(course)}
-                      className="text-blue-600 hover:text-blue-800 transition-colors"
-                    >
-                      <Edit size={16} />
-                    </button>
-                    <button
-                      onClick={() => onDeleteCourse(course.id)}
-                      className="text-red-600 hover:text-red-800 transition-colors ml-2"
-                    >
-                      <Trash2 size={16} />
-                    </button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <button
+                          className="text-blue-600 hover:text-blue-800 transition-colors"
+                        >
+                          <Edit size={16} />
+                        </button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>과목 수정</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            "{course.name}" 과목을 수정하시겠습니까?
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>취소</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleStartEdit(course)}>
+                            수정
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                    
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <button
+                          className="text-red-600 hover:text-red-800 transition-colors ml-2"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>과목 삭제</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            "{course.name}" 과목을 정말 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>취소</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => onDeleteCourse(course.id)} className="bg-red-600 hover:bg-red-700">
+                            삭제
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </td>
                 </tr>
               ))}
