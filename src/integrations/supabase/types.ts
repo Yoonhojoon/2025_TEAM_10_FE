@@ -9,86 +9,41 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      categories: {
-        Row: {
-          description: string | null
-          id: number
-          name: string
-        }
-        Insert: {
-          description?: string | null
-          id?: number
-          name: string
-        }
-        Update: {
-          description?: string | null
-          id?: number
-          name?: string
-        }
-        Relationships: []
-      }
-      course_categories: {
-        Row: {
-          category_id: number | null
-          course_id: string | null
-          id: string
-        }
-        Insert: {
-          category_id?: number | null
-          course_id?: string | null
-          id: string
-        }
-        Update: {
-          category_id?: number | null
-          course_id?: string | null
-          id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "course_categories_category_id_fkey"
-            columns: ["category_id"]
-            isOneToOne: false
-            referencedRelation: "categories"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "course_categories_course_id_fkey"
-            columns: ["course_id"]
-            isOneToOne: false
-            referencedRelation: "courses"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      course_taken: {
+      course_enrollments: {
         Row: {
           course_id: string
+          created_at: string
           grade: string | null
-          semester: string | null
+          id: string
+          semester: string
           user_id: string
         }
         Insert: {
           course_id: string
+          created_at?: string
           grade?: string | null
-          semester?: string | null
+          id?: string
+          semester: string
           user_id: string
         }
         Update: {
           course_id?: string
+          created_at?: string
           grade?: string | null
-          semester?: string | null
+          id?: string
+          semester?: string
           user_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "course_taken_course_id_fkey"
+            foreignKeyName: "course_enrollments_course_id_fkey"
             columns: ["course_id"]
             isOneToOne: false
             referencedRelation: "courses"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "course_taken_user_id_fkey"
+            foreignKeyName: "course_enrollments_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
@@ -98,121 +53,137 @@ export type Database = {
       }
       courses: {
         Row: {
-          course_code: string
+          code: string
+          created_at: string
           credit: number
-          grade_level: number | null
+          department: string
           id: string
           name: string
-          semester: string | null
+          requirement_type: string
         }
         Insert: {
-          course_code: string
+          code: string
+          created_at?: string
           credit: number
-          grade_level?: number | null
-          id: string
+          department: string
+          id?: string
           name: string
-          semester?: string | null
+          requirement_type: string
         }
         Update: {
-          course_code?: string
+          code?: string
+          created_at?: string
           credit?: number
-          grade_level?: number | null
+          department?: string
           id?: string
           name?: string
-          semester?: string | null
+          requirement_type?: string
         }
         Relationships: []
       }
-      curriculum_recommendations: {
+      graduation_requirements: {
         Row: {
-          generated_at: string | null
+          created_at: string
+          department: string
+          description: string
+          entry_year: number
           id: string
-          plan_json: Json
-          source_type: string | null
-          user_id: string | null
+          min_credits: number | null
+          requirement_type: string
         }
         Insert: {
-          generated_at?: string | null
-          id: string
-          plan_json: Json
-          source_type?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          generated_at?: string | null
+          created_at?: string
+          department: string
+          description: string
+          entry_year: number
           id?: string
-          plan_json?: Json
-          source_type?: string | null
-          user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "curriculum_recommendations_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      grad_requirements: {
-        Row: {
-          category_id: number | null
-          entry_year: number
-          id: string
-          major: string
-          min_credits: number
-        }
-        Insert: {
-          category_id?: number | null
-          entry_year: number
-          id: string
-          major: string
-          min_credits: number
+          min_credits?: number | null
+          requirement_type: string
         }
         Update: {
-          category_id?: number | null
+          created_at?: string
+          department?: string
+          description?: string
           entry_year?: number
           id?: string
-          major?: string
-          min_credits?: number
+          min_credits?: number | null
+          requirement_type?: string
+        }
+        Relationships: []
+      }
+      schedule_items: {
+        Row: {
+          course_id: string
+          created_at: string
+          day: string
+          end_time: string
+          id: string
+          location: string | null
+          plan_id: string
+          start_time: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          day: string
+          end_time: string
+          id?: string
+          location?: string | null
+          plan_id: string
+          start_time: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          day?: string
+          end_time?: string
+          id?: string
+          location?: string | null
+          plan_id?: string
+          start_time?: string
         }
         Relationships: [
           {
-            foreignKeyName: "grad_requirements_category_id_fkey"
-            columns: ["category_id"]
+            foreignKeyName: "schedule_items_course_id_fkey"
+            columns: ["course_id"]
             isOneToOne: false
-            referencedRelation: "categories"
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_items_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "schedule_plans"
             referencedColumns: ["id"]
           },
         ]
       }
-      user_credit_summary: {
+      schedule_plans: {
         Row: {
-          category_id: number
-          earned_credits: number
+          created_at: string
+          id: string
+          name: string
+          semester: string
           user_id: string
         }
         Insert: {
-          category_id: number
-          earned_credits: number
+          created_at?: string
+          id?: string
+          name: string
+          semester: string
           user_id: string
         }
         Update: {
-          category_id?: number
-          earned_credits?: number
+          created_at?: string
+          id?: string
+          name?: string
+          semester?: string
           user_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "user_credit_summary_category_id_fkey"
-            columns: ["category_id"]
-            isOneToOne: false
-            referencedRelation: "categories"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "user_credit_summary_user_id_fkey"
+            foreignKeyName: "schedule_plans_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
@@ -222,28 +193,28 @@ export type Database = {
       }
       users: {
         Row: {
-          department: string | null
+          created_at: string
+          department: string
           entry_year: number
           id: string
-          major: string
-          name: string | null
-          student_id: string | null
+          name: string
+          student_id: string
         }
         Insert: {
-          department?: string | null
+          created_at?: string
+          department: string
           entry_year: number
           id: string
-          major: string
-          name?: string | null
-          student_id?: string | null
+          name: string
+          student_id: string
         }
         Update: {
-          department?: string | null
+          created_at?: string
+          department?: string
           entry_year?: number
           id?: string
-          major?: string
-          name?: string | null
-          student_id?: string | null
+          name?: string
+          student_id?: string
         }
         Relationships: []
       }

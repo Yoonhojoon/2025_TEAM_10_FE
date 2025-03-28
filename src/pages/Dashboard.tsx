@@ -3,8 +3,10 @@ import { Button } from "@/components/common/Button";
 import ProgressDashboard from "@/components/dashboard/ProgressDashboard";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
+import GraduationRequirementsModal from "@/components/dashboard/GraduationRequirementsModal";
 import { BookOpenCheck, Settings } from "lucide-react";
 import { useState } from "react";
+import { useAuth } from "@/components/auth/AuthProvider";
 
 const progressMockData = {
   overall: 65,
@@ -18,6 +20,7 @@ const progressMockData = {
 
 const Dashboard = () => {
   const [profileComplete, setProfileComplete] = useState(true);
+  const { user } = useAuth();
   
   return (
     <div className="flex flex-col min-h-screen">
@@ -34,12 +37,15 @@ const Dashboard = () => {
             </div>
             
             <div className="flex space-x-4 animate-fade-in" style={{ animationDelay: "200ms" }}>
-              <Button 
-                variant="outline" 
-                icon={<BookOpenCheck size={18} />}
-              >
-                졸업 요건 살펴보기
-              </Button>
+              <GraduationRequirementsModal>
+                <Button 
+                  variant="outline" 
+                  icon={<BookOpenCheck size={18} />}
+                >
+                  졸업 요건 살펴보기
+                </Button>
+              </GraduationRequirementsModal>
+              
               <Button 
                 variant="outline" 
                 icon={<Settings size={18} />}
