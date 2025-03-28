@@ -63,7 +63,7 @@ const khuCSRequirements: GraduationRequirement[] = [
 
 const GraduationRequirements = () => {
   return (
-    <Card className="mb-8">
+    <Card className="h-full">
       <CardHeader>
         <CardTitle>경희대학교 컴퓨터공학과 졸업 요건</CardTitle>
         <CardDescription>2024년 기준 졸업 요건 안내</CardDescription>
@@ -78,7 +78,7 @@ const GraduationRequirements = () => {
           </AlertDescription>
         </Alert>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-y-auto max-h-[600px]">
           <table className="min-w-full divide-y divide-border">
             <thead className="bg-secondary/50">
               <tr>

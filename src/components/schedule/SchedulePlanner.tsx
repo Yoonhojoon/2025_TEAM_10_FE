@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Button } from "@/components/common/Button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/common/Card";
@@ -122,21 +121,21 @@ const SchedulePlanner = ({
   };
   
   const getCourseStyle = (course: ScheduleCourse) => {
-    const dayIndex = days.indexOf(course.day);
-    
     const startHour = parseInt(course.startTime.split(":")[0]);
     const endHour = parseInt(course.endTime.split(":")[0]);
     
-    const startRow = startHour - 9 + 2;
-    const rowSpan = endHour - startHour;
+    const startPos = startHour - 9;
+    const duration = endHour - startHour;
+    
+    const dayIndex = days.indexOf(course.day);
     
     return {
-      gridColumn: `${dayIndex + 2}`,
-      gridRow: `${startRow} / ${startRow + rowSpan}`,
+      gridColumn: dayIndex + 1,
+      gridRow: `${startPos + 1} / span ${duration}`,
       backgroundColor: getCourseColor(course.code),
-      width: "calc(100% - 8px)", // Fill the width of the container minus margin
-      height: "calc(100% - 4px)", // Fill the height minus margin
-      margin: "2px 4px",
+      width: "100%",
+      height: "100%",
+      margin: "2px 0",
     };
   };
   
@@ -376,12 +375,12 @@ const SchedulePlanner = ({
           </div>
         )}
         
-        <div className="overflow-x-auto pb-2">
+        <div className="overflow-auto pb-2">
           <div className="min-w-[800px] border rounded-lg bg-secondary/30 p-2 overflow-hidden">
             <div 
               className="grid relative"
               style={{ 
-                gridTemplateColumns: "100px repeat(5, 1fr)",
+                gridTemplateColumns: "80px repeat(5, 1fr)",
                 gridTemplateRows: "auto repeat(11, 60px)",
                 gap: "1px"
               }}
@@ -402,7 +401,7 @@ const SchedulePlanner = ({
               {timeSlots.map((time, index) => (
                 <React.Fragment key={`row-${time}`}>
                   <div className="bg-transparent flex items-center justify-start pt-1 pl-2 text-sm text-muted-foreground">
-                    {time}-{(parseInt(time.split(':')[0]) + 1).toString().padStart(2, '0')}:00
+                    {time}
                   </div>
                   
                   {days.map(day => (

@@ -143,14 +143,18 @@ const Schedule = () => {
             </p>
           </div>
           
-          <div className="animate-fade-in" style={{ animationDelay: "100ms" }}>
-            <GraduationRequirements />
+          <div className="flex flex-col lg:flex-row gap-6 animate-fade-in" style={{ animationDelay: "100ms" }}>
+            <div className="w-full lg:w-2/3">
+              <SchedulePlanner 
+                courses={courses}
+                onAddCourse={handleAddCourse}
+                onDeleteCourse={handleDeleteCourse}
+              />
+            </div>
             
-            <SchedulePlanner 
-              courses={courses}
-              onAddCourse={handleAddCourse}
-              onDeleteCourse={handleDeleteCourse}
-            />
+            <div className="w-full lg:w-1/3">
+              <GraduationRequirements />
+            </div>
           </div>
         </div>
       </main>
