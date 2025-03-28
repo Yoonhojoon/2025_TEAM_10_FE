@@ -144,7 +144,7 @@ const Schedule = () => {
           </div>
           
           <div className="flex flex-col lg:flex-row gap-6 animate-fade-in" style={{ animationDelay: "100ms" }}>
-            <div className="w-full lg:w-2/3">
+            <div className="w-full lg:w-3/5">
               <SchedulePlanner 
                 courses={courses}
                 onAddCourse={handleAddCourse}
@@ -152,7 +152,7 @@ const Schedule = () => {
               />
             </div>
             
-            <div className="w-full lg:w-1/3">
+            <div className="w-full lg:w-2/5">
               <GraduationRequirements />
             </div>
           </div>

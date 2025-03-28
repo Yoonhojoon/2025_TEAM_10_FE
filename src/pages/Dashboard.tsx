@@ -4,9 +4,11 @@ import ProgressDashboard from "@/components/dashboard/ProgressDashboard";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import GraduationRequirementsModal from "@/components/dashboard/GraduationRequirementsModal";
-import { BookOpenCheck, Settings } from "lucide-react";
+import { BookOpenCheck, Settings, CirclePercent } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { CircularProgress } from "@/components/common/CircularProgress";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/common/Card";
 
 const progressMockData = {
   overall: 65,
@@ -56,6 +58,72 @@ const Dashboard = () => {
           </div>
           
           <div className="animate-fade-in" style={{ animationDelay: "300ms" }}>
+            <Card className="mb-8">
+              <CardHeader className="pb-2">
+                <CardTitle>졸업 진행 상황</CardTitle>
+                <CardDescription>전체 이수율과 전공/교양별 세부 이수율</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 py-4">
+                  <div className="flex flex-col items-center">
+                    <CircularProgress 
+                      value={progressMockData.overall} 
+                      size="lg" 
+                      variant="primary"
+                      label="전체 이수율"
+                    />
+                    <div className="mt-3 text-center">
+                      <div className="text-sm text-muted-foreground">
+                        {progressMockData.totalCredits}/{progressMockData.requiredCredits} 학점
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex flex-col items-center">
+                    <CircularProgress 
+                      value={(progressMockData.majorRequired + progressMockData.majorElective) / 2} 
+                      size="lg" 
+                      variant="success"
+                      label="전공 이수율"
+                    />
+                    <div className="mt-3 text-center">
+                      <div className="flex flex-wrap justify-center gap-4 text-sm">
+                        <div className="flex items-center gap-1.5">
+                          <div className="h-2 w-2 rounded-full bg-emerald-400"></div>
+                          <span>필수 {progressMockData.majorRequired}%</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <div className="h-2 w-2 rounded-full bg-emerald-300"></div>
+                          <span>선택 {progressMockData.majorElective}%</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex flex-col items-center">
+                    <CircularProgress 
+                      value={(progressMockData.generalRequired + progressMockData.generalElective) / 2} 
+                      size="lg" 
+                      variant="warning"
+                      label="교양 이수율"
+                    />
+                    <div className="mt-3 text-center">
+                      <div className="flex flex-wrap justify-center gap-4 text-sm">
+                        <div className="flex items-center gap-1.5">
+                          <div className="h-2 w-2 rounded-full bg-amber-400"></div>
+                          <span>필수 {progressMockData.generalRequired}%</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <div className="h-2 w-2 rounded-full bg-amber-300"></div>
+                          <span>선택 {progressMockData.generalElective}%</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            
             <ProgressDashboard data={progressMockData} />
           </div>
         </div>
