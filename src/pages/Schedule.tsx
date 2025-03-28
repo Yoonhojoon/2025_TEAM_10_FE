@@ -15,6 +15,7 @@ interface ScheduleCourse {
   endTime: string;
   location: string;
   credit: number;
+  fromHistory?: boolean; // Add flag to identify courses from history
 }
 
 // Mock data for courses - Deliberately creating problematic schedule 

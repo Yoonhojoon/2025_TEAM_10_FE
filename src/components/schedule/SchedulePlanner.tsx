@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Button } from "@/components/common/Button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/common/Card";
-import { AlertCircle, Clock, Copy, Plus, Save, Trash2 } from "lucide-react";
+import { AlertCircle, Clock, Copy, Save, Trash2 } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 
@@ -14,6 +14,7 @@ interface ScheduleCourse {
   endTime: string;
   location: string;
   credit: number;
+  fromHistory?: boolean; // New flag to identify courses from history
 }
 
 const timeSlots = [
@@ -132,15 +133,21 @@ const SchedulePlanner = ({
     return {
       gridColumn: dayIndex + 1,
       gridRow: `${startPos + 1} / span ${duration}`,
-      backgroundColor: getCourseColor(course.code),
+      backgroundColor: getCourseColor(course),
       width: "100%",
       height: "100%",
       margin: "2px 0",
     };
   };
   
-  const getCourseColor = (code: string) => {
-    const seed = code.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const getCourseColor = (course: ScheduleCourse) => {
+    if (course.fromHistory) {
+      const seed = course.code.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
+      const lightness = 65 + (seed % 20);
+      return `hsla(330, 85%, ${lightness}%, 0.8)`;
+    }
+    
+    const seed = course.code.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
     const hue = seed % 360;
     return `hsla(${hue}, 70%, 85%, 0.8)`;
   };
@@ -219,14 +226,6 @@ const SchedulePlanner = ({
       <CardContent>
         <div className="mb-4 flex justify-between items-center">
           <h3 className="text-lg font-medium">2024년 1학기 시간표</h3>
-          <Button 
-            size="sm"
-            variant="outline"
-            icon={<Plus size={16} />}
-            onClick={() => setIsAdding(true)}
-          >
-            과목 추가
-          </Button>
         </div>
         
         {(hasDuplicateTimes || isBelowRecommendedCredits || totalCredits > MAX_CREDITS_PER_SEMESTER) && (
@@ -437,13 +436,17 @@ const SchedulePlanner = ({
         </div>
         
         <div className="mt-6">
-          <h4 className="font-medium mb-2">등록된 과목 (총 {totalCredits}학점)</h4>
+          <h4 className="font-medium mb-2">등록된 과목 (총 {courses.reduce((total, course) => total + course.credit, 0)}학점)</h4>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {courses.map(course => (
               <div 
                 key={course.id} 
                 className="p-3 rounded-lg border"
-                style={{ borderLeftColor: getCourseColor(course.code), borderLeftWidth: '4px' }}
+                style={{ 
+                  borderLeftColor: getCourseColor(course), 
+                  borderLeftWidth: '4px',
+                  backgroundColor: course.fromHistory ? 'rgba(253, 242, 248, 0.3)' : undefined
+                }}
               >
                 <div className="font-medium">{course.name}</div>
                 <div className="text-sm text-muted-foreground mt-1">
