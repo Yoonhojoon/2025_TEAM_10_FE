@@ -50,100 +50,6 @@ export interface SavedSchedule {
   user_id?: string;
 }
 
-// Mock data for courses
-const initialCourses: ScheduleCourse[] = [
-  {
-    id: uuidv4(),
-    name: "컴퓨터 네트워크",
-    code: "COMEENG301",
-    day: "mon",
-    startTime: "10:00",
-    endTime: "12:00",
-    location: "공학관 401호",
-    credit: 3
-  },
-  {
-    id: uuidv4(),
-    name: "데이터베이스",
-    code: "COMEENG302",
-    day: "wed",
-    startTime: "13:00",
-    endTime: "15:00",
-    location: "정보관 202호",
-    credit: 3
-  },
-  {
-    id: uuidv4(),
-    name: "알고리즘",
-    code: "COMEENG303",
-    day: "thu",
-    startTime: "15:00",
-    endTime: "17:00",
-    location: "공학관 305호",
-    credit: 3
-  },
-  {
-    id: uuidv4(),
-    name: "운영체제",
-    code: "COMEENG304",
-    day: "tue",
-    startTime: "10:00",
-    endTime: "12:00",
-    location: "공학관 505호",
-    credit: 3
-  },
-  {
-    id: uuidv4(),
-    name: "인공지능",
-    code: "COMEENG401",
-    day: "mon",
-    startTime: "13:00",
-    endTime: "15:00",
-    location: "공학관 605호",
-    credit: 3
-  },
-  {
-    id: uuidv4(),
-    name: "머신러닝",
-    code: "COMEENG402",
-    day: "mon",
-    startTime: "15:00",
-    endTime: "17:00",
-    location: "공학관 606호",
-    credit: 3
-  },
-  {
-    id: uuidv4(),
-    name: "딥러닝",
-    code: "COMEENG403",
-    day: "mon",
-    startTime: "17:00",
-    endTime: "19:00",
-    location: "공학관 607호",
-    credit: 3
-  },
-  {
-    id: uuidv4(),
-    name: "캡스톤디자인",
-    code: "COMEENG501",
-    day: "fri",
-    startTime: "10:00",
-    endTime: "13:00",
-    location: "공학관 701호",
-    credit: 3
-  },
-  {
-    id: uuidv4(),
-    name: "IoT 프로그래밍",
-    code: "COMEENG502",
-    day: "wed",
-    startTime: "15:00",
-    endTime: "17:00",
-    location: "공학관 702호",
-    credit: 3
-  }
-];
-
 // Helper function to map database schedule time to app format
 export const parseScheduleTime = (scheduleTime: string): { 
   day: "mon" | "tue" | "wed" | "thu" | "fri", 
@@ -212,7 +118,8 @@ export const parseScheduleTime = (scheduleTime: string): {
 };
 
 export const useSchedule = () => {
-  const [courses, setCourses] = useState<ScheduleCourse[]>(initialCourses);
+  // Initialize with an empty courses array instead of hardcoded data
+  const [courses, setCourses] = useState<ScheduleCourse[]>([]);
   const [isGeneratingSchedules, setIsGeneratingSchedules] = useState(false);
   const [generatedSchedules, setGeneratedSchedules] = useState<GeneratedSchedule[]>([]);
   const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);

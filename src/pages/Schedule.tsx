@@ -7,7 +7,6 @@ import ScheduleHeader from "@/components/schedule/ScheduleHeader";
 import GeneratedSchedulesDialog from "@/components/schedule/GeneratedSchedulesDialog";
 import SavedSchedulesDialog from "@/components/schedule/SavedSchedulesDialog";
 import ScheduleVisualizer from "@/components/schedule/ScheduleVisualizer";
-import { Button } from "@/components/common/Button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/common/Card";
 import { Trash2 } from "lucide-react";
 
@@ -30,7 +29,7 @@ const Schedule = () => {
     handleViewOtherSchedules
   } = useSchedule();
   
-  // Create a schedule object from current courses for visualization
+  // Create an empty schedule object for visualization when no courses are available
   const currentSchedule = {
     name: "현재 시간표",
     courses: courses.map(course => ({
