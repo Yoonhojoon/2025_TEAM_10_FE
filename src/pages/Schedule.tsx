@@ -1,4 +1,3 @@
-
 import React from "react";
 import { useSchedule } from "@/hooks/useSchedule";
 import Footer from "@/components/layout/Footer";
@@ -34,7 +33,6 @@ const Schedule = () => {
     handleAddCourse
   } = useSchedule();
   
-  // Create an empty schedule object for visualization when no courses are available
   const currentSchedule = {
     name: "현재 시간표",
     courses: courses.map(course => ({
@@ -50,14 +48,11 @@ const Schedule = () => {
     }))
   };
 
-  // Calculate total credits
   const totalCredits = courses.reduce((total, course) => total + course.credit, 0);
   
-  // Function to handle applying a schedule and showing saved schedules
   const handleApplyAndShowSaved = (schedule: any) => {
     applySchedule(schedule);
     setIsScheduleDialogOpen(false);
-    // Show saved schedules after applying a generated schedule
     setIsViewingSchedules(true);
   };
   
@@ -113,12 +108,10 @@ const Schedule = () => {
                 </div>
               </CardHeader>
               <CardContent>
-                {/* Schedule Visualizer */}
                 <div className="mb-6">
                   <ScheduleVisualizer schedule={currentSchedule} />
                 </div>
                 
-                {/* Course List */}
                 <div className="mt-6">
                   <h4 className="font-medium mb-2">등록된 과목 목록</h4>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -181,7 +174,6 @@ const Schedule = () => {
   );
 };
 
-// Helper functions for course display
 const getDayLabel = (day: string): string => {
   const dayLabels: Record<string, string> = {
     "mon": "월요일",

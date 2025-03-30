@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/common/Card";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -12,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { ScheduleCourse } from "@/hooks/useSchedule";
 
 interface Course {
   id: string;
@@ -22,10 +22,10 @@ interface Course {
 }
 
 interface CourseHistoryInputProps {
-  courses: Course[];
-  onAddCourse: (course: Omit<Course, "id">) => void;
-  onDeleteCourse: (id: string) => void;
-  isLoading: boolean;
+  onAddCourse: (course: Omit<ScheduleCourse, "id">) => void;
+  courses?: Course[];
+  onDeleteCourse?: (id: string) => void;
+  isLoading?: boolean;
 }
 
 interface DbCourse {
@@ -40,10 +40,10 @@ interface DbCourse {
 }
 
 const CourseHistoryInput = ({ 
-  courses,
   onAddCourse,
-  onDeleteCourse,
-  isLoading
+  courses = [],
+  onDeleteCourse = () => {},
+  isLoading = false
 }: CourseHistoryInputProps) => {
   const [isAdding, setIsAdding] = useState(false);
   const [newCourse, setNewCourse] = useState<Omit<Course, "id">>({
@@ -69,7 +69,6 @@ const CourseHistoryInput = ({
       console.log("Fetching department for user ID:", user.id);
       
       try {
-        // Query the users table to get the department_id for the current user
         const { data, error } = await supabase
           .from('users')
           .select('department_id')
@@ -85,7 +84,6 @@ const CourseHistoryInput = ({
           console.log("Found user department ID:", data.department_id);
           setUserDepartmentId(data.department_id);
           
-          // Log the department name for debugging
           const { data: deptData, error: deptError } = await supabase
             .from('departments')
             .select('department_name')
@@ -117,7 +115,19 @@ const CourseHistoryInput = ({
   };
   
   const handleAddCourse = () => {
-    onAddCourse(newCourse);
+    const adaptedCourse: Omit<ScheduleCourse, "id"> = {
+      name: newCourse.name,
+      code: newCourse.code,
+      credit: newCourse.credit,
+      day: "mon",
+      startTime: "10:00",
+      endTime: "12:00",
+      location: "미정",
+      fromHistory: true
+    };
+    
+    onAddCourse(adaptedCourse);
+    
     setNewCourse({
       code: "",
       name: "",
@@ -184,7 +194,6 @@ const CourseHistoryInput = ({
   };
 
   const selectCourseFromDb = (course: DbCourse) => {
-    // 중복 확인은 onAddCourse 내부에서 처리됨
     const mappedCategory = (): "majorRequired" | "majorElective" | "generalRequired" | "generalElective" => {
       switch (course.category) {
         case "전공필수":
@@ -201,14 +210,38 @@ const CourseHistoryInput = ({
       }
     };
 
-    const mappedCourse = {
-      code: course.course_code,
+    const scheduleTimeInfo = course.schedule_time.split(' ');
+    let day: "mon" | "tue" | "wed" | "thu" | "fri" = "mon";
+    let startTime = "10:00";
+    let endTime = "12:00";
+    
+    if (scheduleTimeInfo.length >= 2) {
+      const dayMapping: Record<string, "mon" | "tue" | "wed" | "thu" | "fri"> = {
+        "월": "mon", "화": "tue", "수": "wed", "목": "thu", "금": "fri",
+        "mon": "mon", "tue": "tue", "wed": "wed", "thu": "thu", "fri": "fri"
+      };
+      
+      day = dayMapping[scheduleTimeInfo[0].toLowerCase()] || "mon";
+      
+      const timeRange = scheduleTimeInfo[1].split('-');
+      if (timeRange.length === 2) {
+        startTime = timeRange[0];
+        endTime = timeRange[1];
+      }
+    }
+
+    const adaptedCourse: Omit<ScheduleCourse, "id"> = {
       name: course.course_name,
-      category: mappedCategory(),
-      credit: course.credit
+      code: course.course_code,
+      credit: course.credit,
+      day: day,
+      startTime: startTime,
+      endTime: endTime,
+      location: course.classroom || "미정",
+      fromHistory: true
     };
 
-    onAddCourse(mappedCourse);
+    onAddCourse(adaptedCourse);
   };
   
   return (
@@ -502,7 +535,7 @@ const CourseHistoryInput = ({
                           <AlertDialogHeader>
                             <AlertDialogTitle>과목 삭제</AlertDialogTitle>
                             <AlertDialogDescription>
-                              "{course.name}" 과목을 정말 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
+                              "{course.name}" 과목을 정말 삭제하시겠습��까? 이 작업은 되돌릴 수 없습니다.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
