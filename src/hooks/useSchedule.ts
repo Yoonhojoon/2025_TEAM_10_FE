@@ -453,7 +453,7 @@ export const useSchedule = () => {
         
         toast({
           title: "시간표 저장 완료",
-          description: `"${scheduleName}" 시간표가 저장되었습니다."
+          description: `"${scheduleName}" 시간표가 저장되었습니다.`
         });
       }
     } catch (error) {
