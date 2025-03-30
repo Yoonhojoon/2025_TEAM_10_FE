@@ -1,115 +1,14 @@
-import { useState, useEffect } from "react";
+
+import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { v4 as uuidv4 } from "uuid";
 import { Json } from "@/integrations/supabase/types";
+import { ScheduleCourse, GeneratedSchedule, SavedSchedule, ConsolidatedCourse, CourseData } from "@/types/schedule";
+import { parseScheduleTime, formatScheduleTime, getKoreanDayAbbreviation } from "@/utils/scheduleUtils";
 
-export interface ScheduleCourse {
-  id: string;
-  name: string;
-  code: string;
-  day: "mon" | "tue" | "wed" | "thu" | "fri";
-  startTime: string;
-  endTime: string;
-  location: string;
-  credit: number;
-  fromHistory?: boolean;
-  schedule_time?: string;
-}
-
-export interface GeneratedSchedule {
-  name: string;
-  태그?: string[];
-  과목들?: {
-    course_id: string;
-    과목_이름: string;
-    학수번호: string;
-    학점: number;
-    강의_시간: string;
-    강의실: string;
-  }[];
-  courses?: {
-    course_id: string;
-    course_name: string;
-    course_code: string;
-    credit: number;
-    schedule_time: string;
-    classroom: string;
-  }[];
-  총_학점?: number;
-  total_credits?: number;
-  설명?: string;
-  description?: string;
-}
-
-export interface SavedSchedule {
-  schedule_id: string;
-  created_at: string;
-  description_tags: string[] | null;
-  schedule_json: GeneratedSchedule;
-  user_id?: string;
-}
-
-export const parseScheduleTime = (scheduleTime: string): { 
-  day: "mon" | "tue" | "wed" | "thu" | "fri", 
-  startTime: string, 
-  endTime: string 
-}[] => {
-  try {
-    const koreanDayMap: Record<string, "mon" | "tue" | "wed" | "thu" | "fri"> = {
-      "월": "mon",
-      "화": "tue",
-      "수": "wed",
-      "목": "thu",
-      "금": "fri",
-    };
-    
-    const englishDayMap: Record<string, "mon" | "tue" | "wed" | "thu" | "fri"> = {
-      "mon": "mon",
-      "tue": "tue",
-      "wed": "wed",
-      "thu": "thu",
-      "fri": "fri",
-    };
-    
-    const result: { day: "mon" | "tue" | "wed" | "thu" | "fri", startTime: string, endTime: string }[] = [];
-    
-    const schedules = scheduleTime.split(',').map(s => s.trim());
-    
-    for (const schedule of schedules) {
-      const parts = schedule.split(' ');
-      if (parts.length !== 2) continue;
-      
-      const dayStr = parts[0].toLowerCase();
-      const timeRange = parts[1].split('-');
-      if (timeRange.length !== 2) continue;
-      
-      let day: "mon" | "tue" | "wed" | "thu" | "fri";
-      
-      if (koreanDayMap[parts[0]]) {
-        day = koreanDayMap[parts[0]];
-      } 
-      else if (englishDayMap[dayStr]) {
-        day = englishDayMap[dayStr];
-      } 
-      else {
-        continue;
-      }
-      
-      result.push({
-        day,
-        startTime: timeRange[0],
-        endTime: timeRange[1]
-      });
-    }
-    
-    return result;
-  } catch (error) {
-    console.error("Error parsing schedule time:", error, "Input:", scheduleTime);
-    return [];
-  }
-};
+export { parseScheduleTime } from "@/utils/scheduleUtils";
 
 export const useSchedule = () => {
   const [courses, setCourses] = useState<ScheduleCourse[]>([]);
@@ -125,6 +24,7 @@ export const useSchedule = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   
+  // Load saved schedules when user is authenticated
   useEffect(() => {
     if (!user) return;
     
@@ -162,6 +62,7 @@ export const useSchedule = () => {
     fetchSavedSchedules();
   }, [user, toast]);
   
+  // Add a course to the schedule
   const handleAddCourse = (course: Omit<ScheduleCourse, "id">) => {
     // Check if the course code already exists in the schedule
     const courseExists = courses.some(existingCourse => existingCourse.code === course.code);
@@ -183,10 +84,12 @@ export const useSchedule = () => {
     return true;
   };
   
+  // Remove a course from the schedule
   const handleDeleteCourse = (id: string) => {
     setCourses(courses.filter(course => course.id !== id));
   };
   
+  // Delete a saved schedule
   const handleDeleteSchedule = async (scheduleId: string) => {
     if (!user) {
       toast({
@@ -232,6 +135,7 @@ export const useSchedule = () => {
     }
   };
   
+  // Generate schedules using Supabase edge function
   const handleGenerateSchedules = async () => {
     if (!user) {
       toast({
@@ -295,6 +199,7 @@ export const useSchedule = () => {
     }
   };
   
+  // Apply a schedule to the current view
   const applySchedule = (schedule: GeneratedSchedule) => {
     const newCourses: ScheduleCourse[] = [];
     
@@ -309,6 +214,11 @@ export const useSchedule = () => {
       const credit = "학점" in course ? course.학점 : course.credit;
       const scheduleTime = "강의_시간" in course ? course.강의_시간 : course.schedule_time;
       const classroom = "강의실" in course ? course.강의실 : course.classroom || "미정";
+      
+      if (!courseName || !courseCode || !credit || !scheduleTime) {
+        console.error("Missing required course data:", course);
+        return;
+      }
       
       console.log("Processing course:", courseName, "with time:", scheduleTime);
       
@@ -355,6 +265,7 @@ export const useSchedule = () => {
     }
   };
   
+  // View a saved schedule
   const handleViewSchedule = (scheduleId: string) => {
     const schedule = savedSchedules.find(s => s.schedule_id === scheduleId);
     if (schedule) {
@@ -368,6 +279,7 @@ export const useSchedule = () => {
     }
   };
   
+  // View saved schedules
   const handleViewOtherSchedules = () => {
     if (savedSchedules.length === 0) {
       toast({
@@ -380,6 +292,7 @@ export const useSchedule = () => {
     setIsViewingSchedules(true);
   };
   
+  // Save a schedule
   const handleSaveSchedule = async (scheduleName: string, tags: string[] = []) => {
     if (!user) {
       toast({
@@ -404,11 +317,7 @@ export const useSchedule = () => {
       const coursesByCode = new Map();
       
       courses.forEach(course => {
-        const dayKorean = course.day === 'mon' ? '월' : 
-                         course.day === 'tue' ? '화' : 
-                         course.day === 'wed' ? '수' : 
-                         course.day === 'thu' ? '목' : '금';
-        
+        const dayKorean = getKoreanDayAbbreviation(course.day);
         const timeInfo = `${dayKorean} ${course.startTime}-${course.endTime}`;
         
         if (coursesByCode.has(course.code)) {
@@ -480,9 +389,55 @@ export const useSchedule = () => {
       setIsSavingSchedule(false);
     }
   };
+
+  // Calculate consolidated courses for display
+  const consolidatedCourses = useMemo(() => {
+    const courseMap = new Map<string, ConsolidatedCourse>();
+    
+    courses.forEach(course => {
+      if (courseMap.has(course.code)) {
+        const existingCourse = courseMap.get(course.code)!;
+        existingCourse.scheduleTimes.push({
+          id: course.id,
+          day: course.day,
+          startTime: course.startTime,
+          endTime: course.endTime
+        });
+      } else {
+        courseMap.set(course.code, {
+          ...course,
+          scheduleTimes: [{
+            id: course.id,
+            day: course.day,
+            startTime: course.startTime,
+            endTime: course.endTime
+          }]
+        });
+      }
+    });
+    
+    return Array.from(courseMap.values());
+  }, [courses]);
+
+  // Calculate total credits
+  const totalCredits = useMemo(() => {
+    const courseCodes = new Set<string>();
+    let total = 0;
+    
+    courses.forEach(course => {
+      if (!courseCodes.has(course.code)) {
+        courseCodes.add(course.code);
+        total += course.credit;
+      }
+    });
+    
+    return total;
+  }, [courses]);
   
   return {
     courses,
+    consolidatedCourses,
+    totalCredits,
     isGeneratingSchedules,
     generatedSchedules,
     isScheduleDialogOpen,
