@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/common/Card";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -22,7 +23,7 @@ interface Course {
 }
 
 interface CourseHistoryInputProps {
-  onAddCourse: (course: Omit<ScheduleCourse, "id">) => void;
+  onAddCourse: (course: any) => void;
   courses?: Course[];
   onDeleteCourse?: (id: string) => void;
   isLoading?: boolean;

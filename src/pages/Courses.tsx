@@ -1,4 +1,3 @@
-
 import CourseHistoryInput from "@/components/courses/CourseHistoryInput";
 import Footer from "@/components/layout/Footer";
 import Header from "@/components/layout/Header";
@@ -6,6 +5,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { ScheduleCourse } from "@/hooks/useSchedule";
 
 interface Course {
   id: string;
@@ -27,7 +27,6 @@ const Courses = () => {
       
       setIsLoading(true);
       try {
-        // Fetch user enrollments and join with course details
         const { data: enrollmentsData, error: enrollmentsError } = await supabase
           .from('enrollments')
           .select(`
@@ -48,11 +47,9 @@ const Courses = () => {
         if (enrollmentsData && enrollmentsData.length > 0) {
           console.log("Fetched enrollments:", enrollmentsData);
           
-          // Map the joined data to our Course interface
           const formattedCourses = enrollmentsData.map(enrollment => {
             const courseDetails = enrollment.courses;
             
-            // Map the database category to our application category
             const mapCategory = (): "majorRequired" | "majorElective" | "generalRequired" | "generalElective" => {
               const category = courseDetails.category;
               if (category === "전공필수" || category === "전공기초") return "majorRequired";
@@ -99,7 +96,6 @@ const Courses = () => {
       return;
     }
     
-    // 중복 과목 확인
     const isDuplicate = courses.some(existingCourse => existingCourse.code === course.code);
     if (isDuplicate) {
       toast({
@@ -113,7 +109,6 @@ const Courses = () => {
     try {
       console.log("Adding course:", course);
       
-      // First, find the course_id from the courses table
       const { data: courseData, error: courseError } = await supabase
         .from('courses')
         .select('course_id')
@@ -127,7 +122,6 @@ const Courses = () => {
       
       console.log("Found course ID:", courseData.course_id);
       
-      // Insert into enrollments table
       const { data: enrollmentData, error: enrollmentError } = await supabase
         .from('enrollments')
         .insert({
@@ -144,7 +138,6 @@ const Courses = () => {
       
       console.log("Enrollment successful:", enrollmentData);
       
-      // Add to local state
       const newCourse = {
         id: enrollmentData.enrollment_id,
         ...course
@@ -169,7 +162,6 @@ const Courses = () => {
     if (!user) return;
     
     try {
-      // Delete from enrollments table
       const { error } = await supabase
         .from('enrollments')
         .delete()
@@ -177,7 +169,6 @@ const Courses = () => {
       
       if (error) throw error;
       
-      // Remove from local state
       setCourses(courses.filter(course => course.id !== id));
       
       toast({
@@ -192,6 +183,17 @@ const Courses = () => {
         variant: "destructive",
       });
     }
+  };
+  
+  const handleScheduleCourseAdd = (course: Omit<ScheduleCourse, "id">) => {
+    const adaptedCourse: Omit<Course, "id"> = {
+      code: course.code,
+      name: course.name,
+      credit: course.credit,
+      category: "majorElective"
+    };
+    
+    handleAddCourse(adaptedCourse);
   };
   
   return (
@@ -210,7 +212,7 @@ const Courses = () => {
           <div className="animate-fade-in" style={{ animationDelay: "100ms" }}>
             <CourseHistoryInput 
               courses={courses}
-              onAddCourse={handleAddCourse}
+              onAddCourse={handleScheduleCourseAdd}
               onDeleteCourse={handleDeleteCourse}
               isLoading={isLoading}
             />
