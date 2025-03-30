@@ -1,5 +1,5 @@
 
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { useSchedule } from "@/hooks/useSchedule";
 import Footer from "@/components/layout/Footer";
 import Header from "@/components/layout/Header";
@@ -8,12 +8,13 @@ import GeneratedSchedulesDialog from "@/components/schedule/GeneratedSchedulesDi
 import SavedSchedulesDialog from "@/components/schedule/SavedSchedulesDialog";
 import ScheduleVisualizer from "@/components/schedule/ScheduleVisualizer";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/common/Card";
-import { Trash2, GraduationCap, BookPlus, AlertCircle } from "lucide-react";
+import { Trash2, GraduationCap, BookPlus, AlertCircle, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import GraduationRequirementsModal from "@/components/dashboard/GraduationRequirementsModal";
 import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import AvailableCoursesDialog from "@/components/schedule/AvailableCoursesDialog";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import SaveScheduleDialog from "@/components/schedule/SaveScheduleDialog";
 
 const Schedule = () => {
   const {
@@ -24,6 +25,7 @@ const Schedule = () => {
     isViewingSchedules,
     savedSchedules,
     selectedSavedSchedule,
+    isSavingSchedule,
     setIsScheduleDialogOpen,
     setIsViewingSchedules,
     setSelectedSavedSchedule,
@@ -32,8 +34,11 @@ const Schedule = () => {
     applySchedule,
     handleViewSchedule,
     handleViewOtherSchedules,
-    handleAddCourse
+    handleAddCourse,
+    handleSaveSchedule
   } = useSchedule();
+  
+  const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
   
   const currentSchedule = {
     name: "현재 시간표",
@@ -171,6 +176,17 @@ const Schedule = () => {
                   <CardDescription>총 {consolidatedCourses.length}과목 {totalCredits}학점</CardDescription>
                 </div>
                 <div className="flex gap-3">
+                  <Button 
+                    onClick={() => setIsSaveDialogOpen(true)} 
+                    variant="default"
+                    size="sm"
+                    className="flex gap-2"
+                    disabled={courses.length === 0 || isSavingSchedule}
+                  >
+                    <Save size={16} />
+                    시간표 저장
+                  </Button>
+                  
                   <GraduationRequirementsModal>
                     <Button variant="outline" size="sm" className="flex gap-2">
                       <GraduationCap size={16} />
@@ -273,6 +289,13 @@ const Schedule = () => {
         savedSchedules={savedSchedules}
         onApplySchedule={applySchedule}
         onSelectSchedule={setSelectedSavedSchedule}
+      />
+      
+      <SaveScheduleDialog
+        isOpen={isSaveDialogOpen}
+        onOpenChange={setIsSaveDialogOpen}
+        onSave={handleSaveSchedule}
+        isSaving={isSavingSchedule}
       />
     </div>
   );

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useToast } from "@/hooks/use-toast";
@@ -120,6 +119,7 @@ export const useSchedule = () => {
   const [isViewingSchedules, setIsViewingSchedules] = useState(false);
   const [savedSchedules, setSavedSchedules] = useState<SavedSchedule[]>([]);
   const [selectedSavedSchedule, setSelectedSavedSchedule] = useState<string | null>(null);
+  const [isSavingSchedule, setIsSavingSchedule] = useState(false);
   
   const { user } = useAuth();
   const { toast } = useToast();
@@ -163,7 +163,7 @@ export const useSchedule = () => {
   
   const handleAddCourse = (course: Omit<ScheduleCourse, "id">) => {
     const newCourse = {
-      id: uuidv4(), // Generate a new ID instead of trying to access the non-existent id property
+      id: uuidv4(),
       ...course
     };
     setCourses([...courses, newCourse]);
@@ -321,6 +321,74 @@ export const useSchedule = () => {
     setIsViewingSchedules(true);
   };
   
+  const handleSaveSchedule = async (scheduleName: string, tags: string[] = []) => {
+    if (!user) {
+      toast({
+        title: "로그인 필요",
+        description: "시간표 저장을 위해 로그인이 필요합니다.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setIsSavingSchedule(true);
+    
+    try {
+      const schedule: GeneratedSchedule = {
+        name: scheduleName,
+        courses: courses.map(course => ({
+          course_id: course.id,
+          course_name: course.name,
+          course_code: course.code,
+          credit: course.credit,
+          schedule_time: `${course.day === 'mon' ? '월' : 
+                          course.day === 'tue' ? '화' : 
+                          course.day === 'wed' ? '수' : 
+                          course.day === 'thu' ? '목' : '금'} ${course.startTime}-${course.endTime}`,
+          classroom: course.location
+        }))
+      };
+      
+      const { data, error } = await supabase
+        .from('schedules')
+        .insert({
+          user_id: user.id,
+          schedule_json: schedule as Json,
+          description_tags: tags.length > 0 ? tags : null
+        })
+        .select()
+        .single();
+        
+      if (error) {
+        throw error;
+      }
+      
+      if (data) {
+        const newSchedule: SavedSchedule = {
+          ...data,
+          schedule_json: data.schedule_json as unknown as GeneratedSchedule
+        };
+        
+        setSavedSchedules([newSchedule, ...savedSchedules]);
+        setSelectedSavedSchedule(newSchedule.schedule_id);
+        
+        toast({
+          title: "시간표 저장 완료",
+          description: `"${scheduleName}" 시간표가 저장되었습니다.`
+        });
+      }
+    } catch (error) {
+      console.error('Error saving schedule:', error);
+      toast({
+        title: "시간표 저장 실패",
+        description: error instanceof Error ? error.message : "시간표를 저장하는데 실패했습니다.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSavingSchedule(false);
+    }
+  };
+  
   return {
     courses,
     isGeneratingSchedules,
@@ -329,6 +397,7 @@ export const useSchedule = () => {
     isViewingSchedules,
     savedSchedules,
     selectedSavedSchedule,
+    isSavingSchedule,
     setIsScheduleDialogOpen,
     setIsViewingSchedules,
     setSelectedSavedSchedule,
@@ -337,6 +406,7 @@ export const useSchedule = () => {
     handleGenerateSchedules,
     applySchedule,
     handleViewSchedule,
-    handleViewOtherSchedules
+    handleViewOtherSchedules,
+    handleSaveSchedule
   };
 };
