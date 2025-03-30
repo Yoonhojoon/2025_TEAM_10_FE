@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogCancel } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
@@ -24,7 +23,7 @@ interface AvailableCourse {
 }
 
 interface AvailableCoursesDialogProps {
-  onAddCourse: (course: any) => void;
+  onAddCourse: (course: any) => boolean;
   onClose?: () => void;
 }
 
@@ -43,7 +42,6 @@ const AvailableCoursesDialog: React.FC<AvailableCoursesDialogProps> = ({ onAddCo
       
       setIsLoading(true);
       try {
-        // First, get IDs of courses the user has already taken
         const { data: enrollments, error: enrollmentsError } = await supabase
           .from('enrollments')
           .select('course_id')
@@ -53,14 +51,12 @@ const AvailableCoursesDialog: React.FC<AvailableCoursesDialogProps> = ({ onAddCo
         
         const enrolledCourseIds = enrollments.map(e => e.course_id);
         
-        // Then, fetch courses that the user hasn't taken
         const { data: coursesData, error: coursesError } = await supabase
           .from('courses')
           .select('*');
           
         if (coursesError) throw coursesError;
         
-        // Filter out courses the user has already taken
         const availableCoursesData = coursesData.filter(
           course => !enrolledCourseIds.includes(course.course_id)
         );
@@ -89,7 +85,6 @@ const AvailableCoursesDialog: React.FC<AvailableCoursesDialogProps> = ({ onAddCo
   const filterCourses = () => {
     let filtered = [...availableCourses];
     
-    // Apply search filter
     if (searchTerm.trim() !== "") {
       const lowerSearchTerm = searchTerm.toLowerCase();
       filtered = filtered.filter(course => 
@@ -98,7 +93,6 @@ const AvailableCoursesDialog: React.FC<AvailableCoursesDialogProps> = ({ onAddCo
       );
     }
     
-    // Apply category filter
     if (categoryFilter && categoryFilter !== "all") {
       filtered = filtered.filter(course => course.category === categoryFilter);
     }
@@ -109,9 +103,8 @@ const AvailableCoursesDialog: React.FC<AvailableCoursesDialogProps> = ({ onAddCo
   const handleAddCourse = (course: AvailableCourse) => {
     const timeSlots = parseScheduleTime(course.schedule_time);
     
-    // If no valid time slots could be parsed, add with default values
     if (timeSlots.length === 0) {
-      onAddCourse({
+      const added = onAddCourse({
         id: course.course_id,
         name: course.course_name,
         code: course.course_code,
@@ -122,10 +115,16 @@ const AvailableCoursesDialog: React.FC<AvailableCoursesDialogProps> = ({ onAddCo
         location: course.classroom || "미정",
         schedule_time: course.schedule_time
       });
+      
+      if (added) {
+        toast({
+          title: "과목 추가 완료",
+          description: `${course.course_name} 과목이 시간표에 추가되었습니다.`,
+        });
+      }
     } else {
-      // Add the first time slot directly
       const firstSlot = timeSlots[0];
-      onAddCourse({
+      const added = onAddCourse({
         id: course.course_id,
         name: course.course_name,
         code: course.course_code,
@@ -136,12 +135,14 @@ const AvailableCoursesDialog: React.FC<AvailableCoursesDialogProps> = ({ onAddCo
         location: course.classroom || "미정",
         schedule_time: course.schedule_time
       });
+      
+      if (added) {
+        toast({
+          title: "과목 추가 완료",
+          description: `${course.course_name} 과목이 시간표에 추가되었습니다.`,
+        });
+      }
     }
-    
-    toast({
-      title: "과목 추가 완료",
-      description: `${course.course_name} 과목이 시간표에 추가되었습니다.`,
-    });
   };
   
   const mapCategoryLabel = (category: string): string => {

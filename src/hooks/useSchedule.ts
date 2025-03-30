@@ -163,11 +163,24 @@ export const useSchedule = () => {
   }, [user, toast]);
   
   const handleAddCourse = (course: Omit<ScheduleCourse, "id">) => {
+    // Check if the course code already exists in the schedule
+    const courseExists = courses.some(existingCourse => existingCourse.code === course.code);
+    
+    if (courseExists) {
+      toast({
+        title: "과목 추가 실패",
+        description: "이미 시간표에 있는 과목입니다. 동일 과목은 추가할 수 없습니다.",
+        variant: "destructive"
+      });
+      return false;
+    }
+    
     const newCourse = {
       id: uuidv4(),
       ...course
     };
     setCourses([...courses, newCourse]);
+    return true;
   };
   
   const handleDeleteCourse = (id: string) => {
