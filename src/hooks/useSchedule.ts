@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useToast } from "@/hooks/use-toast";
@@ -150,7 +149,7 @@ export const parseScheduleTime = (scheduleTime: string): {
   day: "mon" | "tue" | "wed" | "thu" | "fri", 
   startTime: string, 
   endTime: string 
-} | null => {
+}[] => {
   try {
     // Handle both Korean and English format
     // Korean format example: "월 10:00-11:30"
@@ -171,41 +170,44 @@ export const parseScheduleTime = (scheduleTime: string): {
       "fri": "fri",
     };
     
+    const result: { day: "mon" | "tue" | "wed" | "thu" | "fri", startTime: string, endTime: string }[] = [];
+    
     // Check if multiple schedules separated by comma (like "월 10:00-11:30, 수 13:00-14:30")
-    if (scheduleTime.includes(",")) {
-      // Take just the first schedule for now
-      scheduleTime = scheduleTime.split(",")[0].trim();
+    const schedules = scheduleTime.split(',').map(s => s.trim());
+    
+    for (const schedule of schedules) {
+      const parts = schedule.split(' ');
+      if (parts.length !== 2) continue;
+      
+      const dayStr = parts[0].toLowerCase();
+      const timeRange = parts[1].split('-');
+      if (timeRange.length !== 2) continue;
+      
+      let day: "mon" | "tue" | "wed" | "thu" | "fri";
+      
+      // Try to match Korean day
+      if (koreanDayMap[parts[0]]) {
+        day = koreanDayMap[parts[0]];
+      } 
+      // Try to match English day
+      else if (englishDayMap[dayStr]) {
+        day = englishDayMap[dayStr];
+      } 
+      else {
+        continue;
+      }
+      
+      result.push({
+        day,
+        startTime: timeRange[0],
+        endTime: timeRange[1]
+      });
     }
     
-    const parts = scheduleTime.split(' ');
-    if (parts.length !== 2) return null;
-    
-    const dayStr = parts[0].toLowerCase();
-    const timeRange = parts[1].split('-');
-    if (timeRange.length !== 2) return null;
-    
-    let day: "mon" | "tue" | "wed" | "thu" | "fri";
-    
-    // Try to match Korean day
-    if (koreanDayMap[parts[0]]) {
-      day = koreanDayMap[parts[0]];
-    } 
-    // Try to match English day
-    else if (englishDayMap[dayStr]) {
-      day = englishDayMap[dayStr];
-    } 
-    else {
-      return null;
-    }
-    
-    return {
-      day,
-      startTime: timeRange[0],
-      endTime: timeRange[1]
-    };
+    return result;
   } catch (error) {
     console.error("Error parsing schedule time:", error, "Input:", scheduleTime);
-    return null;
+    return [];
   }
 };
 
@@ -352,20 +354,22 @@ export const useSchedule = () => {
       
       console.log("Processing course:", courseName, "with time:", scheduleTime);
       
-      const timeInfo = parseScheduleTime(scheduleTime);
-      console.log("Parsed time info:", timeInfo);
+      const timeInfoArray = parseScheduleTime(scheduleTime);
+      console.log("Parsed time info array:", timeInfoArray);
       
-      if (timeInfo) {
-        newCourses.push({
-          id: uuidv4(),
-          name: courseName,
-          code: courseCode,
-          day: timeInfo.day,
-          startTime: timeInfo.startTime,
-          endTime: timeInfo.endTime,
-          location: classroom,
-          credit: credit,
-          fromHistory: false
+      if (timeInfoArray && timeInfoArray.length > 0) {
+        timeInfoArray.forEach(timeInfo => {
+          newCourses.push({
+            id: uuidv4(),
+            name: courseName,
+            code: courseCode,
+            day: timeInfo.day,
+            startTime: timeInfo.startTime,
+            endTime: timeInfo.endTime,
+            location: classroom,
+            credit: credit,
+            fromHistory: false
+          });
         });
       } else {
         console.error("Failed to parse schedule time for course:", courseName, scheduleTime);
@@ -377,6 +381,7 @@ export const useSchedule = () => {
     if (newCourses.length > 0) {
       setCourses(newCourses);
       setIsScheduleDialogOpen(false);
+      setIsViewingSchedules(false);
       
       toast({
         title: "시간표 적용 완료",
