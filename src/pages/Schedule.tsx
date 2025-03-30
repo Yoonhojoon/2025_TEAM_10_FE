@@ -1,14 +1,15 @@
 
 import React from "react";
 import { useSchedule } from "@/hooks/useSchedule";
-import SchedulePlanner from "@/components/schedule/SchedulePlanner";
-import GraduationRequirements from "@/components/schedule/GraduationRequirements";
 import Footer from "@/components/layout/Footer";
 import Header from "@/components/layout/Header";
 import ScheduleHeader from "@/components/schedule/ScheduleHeader";
 import GeneratedSchedulesDialog from "@/components/schedule/GeneratedSchedulesDialog";
 import SavedSchedulesDialog from "@/components/schedule/SavedSchedulesDialog";
 import ScheduleVisualizer from "@/components/schedule/ScheduleVisualizer";
+import { Button } from "@/components/common/Button";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/common/Card";
+import { Trash2 } from "lucide-react";
 
 const Schedule = () => {
   const {
@@ -22,7 +23,6 @@ const Schedule = () => {
     setIsScheduleDialogOpen,
     setIsViewingSchedules,
     setSelectedSavedSchedule,
-    handleAddCourse,
     handleDeleteCourse,
     handleGenerateSchedules,
     applySchedule,
@@ -45,6 +45,9 @@ const Schedule = () => {
       classroom: course.location
     }))
   };
+
+  // Calculate total credits
+  const totalCredits = courses.reduce((total, course) => total + course.credit, 0);
   
   return (
     <div className="flex flex-col min-h-screen">
@@ -61,25 +64,58 @@ const Schedule = () => {
             handleViewOtherSchedules={handleViewOtherSchedules}
           />
           
-          <div className="flex flex-col lg:flex-row gap-6 animate-fade-in" style={{ animationDelay: "100ms" }}>
-            <div className="w-full lg:w-3/5">
-              <SchedulePlanner 
-                courses={courses}
-                onAddCourse={handleAddCourse}
-                onDeleteCourse={handleDeleteCourse}
-                onViewOtherSchedules={handleViewOtherSchedules}
-              />
-              
-              {/* Always show the schedule visualizer, even when empty */}
-              <div className="mt-6">
-                <h3 className="text-lg font-medium mb-3">시간표 시각화</h3>
-                <ScheduleVisualizer schedule={currentSchedule} />
-              </div>
-            </div>
-            
-            <div className="w-full lg:w-2/5">
-              <GraduationRequirements />
-            </div>
+          <div className="animate-fade-in" style={{ animationDelay: "100ms" }}>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <div>
+                  <CardTitle>2024년 1학기 시간표</CardTitle>
+                  <CardDescription>총 {totalCredits}학점</CardDescription>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {/* Schedule Visualizer */}
+                <div className="mb-6">
+                  <ScheduleVisualizer schedule={currentSchedule} />
+                </div>
+                
+                {/* Course List */}
+                <div className="mt-6">
+                  <h4 className="font-medium mb-2">등록된 과목 목록</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {courses.map(course => (
+                      <div 
+                        key={course.id} 
+                        className="p-3 rounded-lg border"
+                        style={{ 
+                          borderLeftColor: getCourseColor(course.code), 
+                          borderLeftWidth: '4px',
+                          backgroundColor: course.fromHistory ? 'rgba(253, 242, 248, 0.3)' : undefined
+                        }}
+                      >
+                        <div className="font-medium">{course.name}</div>
+                        <div className="text-sm text-muted-foreground mt-1">
+                          {getDayLabel(course.day)} {course.startTime}-{course.endTime}
+                        </div>
+                        <div className="flex justify-between items-center mt-2">
+                          <span className="text-sm">{course.credit}학점</span>
+                          <button
+                            onClick={() => handleDeleteCourse(course.id)}
+                            className="text-red-500 hover:text-red-700 transition-colors"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                    {courses.length === 0 && (
+                      <div className="md:col-span-3 p-6 text-center text-muted-foreground border rounded-lg">
+                        아직 등록된 과목이 없습니다. '다른 계획 보기' 또는 '시간표 생성하기'를 이용해보세요.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </main>
@@ -103,6 +139,24 @@ const Schedule = () => {
       />
     </div>
   );
+};
+
+// Helper functions for course display
+const getDayLabel = (day: string): string => {
+  const dayLabels: Record<string, string> = {
+    "mon": "월요일",
+    "tue": "화요일",
+    "wed": "수요일",
+    "thu": "목요일",
+    "fri": "금요일",
+  };
+  return dayLabels[day] || day;
+};
+
+const getCourseColor = (courseCode: string): string => {
+  const seed = courseCode.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const hue = seed % 360;
+  return `hsla(${hue}, 70%, 85%, 0.8)`;
 };
 
 export default Schedule;
