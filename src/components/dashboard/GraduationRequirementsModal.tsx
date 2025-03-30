@@ -71,30 +71,30 @@ const GraduationRequirementsModal = ({ children }: GraduationRequirementsModalPr
       <DialogTrigger asChild>
         {children ? children : <Button variant="outline">졸업 요건 살펴보기</Button>}
       </DialogTrigger>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>경희대학교 컴퓨터공학과 졸업 요건</DialogTitle>
-          <DialogDescription>2024년 기준 졸업 요건 안내</DialogDescription>
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto w-[90vw] p-6 md:p-8">
+        <DialogHeader className="mb-4">
+          <DialogTitle className="text-xl md:text-2xl">경희대학교 컴퓨터공학과 졸업 요건</DialogTitle>
+          <DialogDescription className="text-base mt-2">2024년 기준 졸업 요건 안내</DialogDescription>
         </DialogHeader>
         
         <div className="mt-4">
-          <Alert>
-            <InfoIcon className="h-4 w-4" />
-            <AlertTitle>안내사항</AlertTitle>
-            <AlertDescription>
+          <Alert className="mb-6">
+            <InfoIcon className="h-5 w-5" />
+            <AlertTitle className="text-lg">안내사항</AlertTitle>
+            <AlertDescription className="text-base mt-1">
               아래 내용은 경희대학교 컴퓨터공학과 학과 시행세칙(2024년 기준), 후마니타스 칼리지 교양과정 안내 등을 참고하여 작성되었습니다.
               정확한 정보는 학과 사무실이나 공식 홈페이지를 통해 확인하시기 바랍니다.
             </AlertDescription>
           </Alert>
 
-          <div className="overflow-x-auto mt-4">
+          <div className="overflow-x-auto mt-6">
             <table className="min-w-full divide-y divide-border">
               <thead className="bg-secondary/50">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider w-1/5">
+                  <th className="px-5 py-4 text-left text-sm font-medium text-muted-foreground uppercase tracking-wider w-1/5">
                     항목
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  <th className="px-5 py-4 text-left text-sm font-medium text-muted-foreground uppercase tracking-wider">
                     졸업 요건
                   </th>
                 </tr>
@@ -102,15 +102,15 @@ const GraduationRequirementsModal = ({ children }: GraduationRequirementsModalPr
               <tbody className="bg-card divide-y divide-border">
                 {khuCSRequirements.map((item, index) => (
                   <tr key={index} className="bg-card hover:bg-secondary/30 transition-colors">
-                    <td className="px-4 py-4 text-sm font-medium">
+                    <td className="px-5 py-5 text-base font-medium">
                       {item.category}
                       {item.totalCredits && (
-                        <div className="text-xs text-muted-foreground mt-1">
+                        <div className="text-sm text-muted-foreground mt-1">
                           총 {item.totalCredits}학점
                         </div>
                       )}
                     </td>
-                    <td className="px-4 py-4 text-sm">
+                    <td className="px-5 py-5 text-base">
                       <ul className="list-disc pl-5 space-y-2">
                         {item.requirements.map((req, reqIndex) => (
                           <li key={reqIndex}>{req}</li>
