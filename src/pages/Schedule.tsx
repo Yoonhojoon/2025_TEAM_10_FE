@@ -8,7 +8,11 @@ import GeneratedSchedulesDialog from "@/components/schedule/GeneratedSchedulesDi
 import SavedSchedulesDialog from "@/components/schedule/SavedSchedulesDialog";
 import ScheduleVisualizer from "@/components/schedule/ScheduleVisualizer";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/common/Card";
-import { Trash2 } from "lucide-react";
+import { Trash2, GraduationCap, BookOpen } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import GraduationRequirementsModal from "@/components/dashboard/GraduationRequirementsModal";
+import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import CourseHistoryInput from "@/components/courses/CourseHistoryInput";
 
 const Schedule = () => {
   const {
@@ -26,7 +30,8 @@ const Schedule = () => {
     handleGenerateSchedules,
     applySchedule,
     handleViewSchedule,
-    handleViewOtherSchedules
+    handleViewOtherSchedules,
+    handleAddCourse
   } = useSchedule();
   
   // Create an empty schedule object for visualization when no courses are available
@@ -47,6 +52,14 @@ const Schedule = () => {
 
   // Calculate total credits
   const totalCredits = courses.reduce((total, course) => total + course.credit, 0);
+  
+  // Function to handle applying a schedule and showing saved schedules
+  const handleApplyAndShowSaved = (schedule: any) => {
+    applySchedule(schedule);
+    setIsScheduleDialogOpen(false);
+    // Show saved schedules after applying a generated schedule
+    setIsViewingSchedules(true);
+  };
   
   return (
     <div className="flex flex-col min-h-screen">
@@ -69,6 +82,34 @@ const Schedule = () => {
                 <div>
                   <CardTitle>2024년 1학기 시간표</CardTitle>
                   <CardDescription>총 {totalCredits}학점</CardDescription>
+                </div>
+                <div className="flex gap-3">
+                  <GraduationRequirementsModal>
+                    <Button variant="outline" size="sm" className="flex gap-2">
+                      <GraduationCap size={16} />
+                      졸업 요건 확인
+                    </Button>
+                  </GraduationRequirementsModal>
+                  
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" size="sm" className="flex gap-2">
+                        <BookOpen size={16} />
+                        수강 기록에서 추가
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent className="max-w-3xl max-h-[90vh] overflow-auto">
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>수강 기록에서 과목 추가</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          이전에 수강했던, 또는 현재 수강중인 과목을 시간표에 추가합니다.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <div className="mt-4">
+                        <CourseHistoryInput onAddCourse={handleAddCourse} />
+                      </div>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
               </CardHeader>
               <CardContent>
@@ -126,7 +167,7 @@ const Schedule = () => {
         onOpenChange={setIsScheduleDialogOpen}
         generatedSchedules={generatedSchedules}
         isGeneratingSchedules={isGeneratingSchedules}
-        onApplySchedule={applySchedule}
+        onApplySchedule={handleApplyAndShowSaved}
       />
       
       <SavedSchedulesDialog

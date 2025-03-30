@@ -99,10 +99,7 @@ const GeneratedSchedulesDialog = ({
                     
                     <Button 
                       size="default"
-                      onClick={() => {
-                        onApplySchedule(schedule);
-                        onOpenChange(false);
-                      }}
+                      onClick={() => onApplySchedule(schedule)}
                       className="min-w-[110px]"
                     >
                       적용하기
