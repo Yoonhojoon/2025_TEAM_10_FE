@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/common/Card";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -27,13 +26,16 @@ interface CourseHistoryInputProps {
   onUpdateCourse: (id: string, course: Partial<Course>) => void;
 }
 
+// Updated to match the structure from Supabase courses table
 interface DbCourse {
-  id: string;
-  code: string;
-  name: string;
-  requirement_type: string;
+  course_id: string;
+  course_code: string;
+  course_name: string;
+  category: "전공" | "교양";
   credit: number;
-  department: string;
+  department_id: string;
+  schedule_time: string;
+  classroom: string | null;
 }
 
 const CourseHistoryInput = ({ 
@@ -120,8 +122,8 @@ const CourseHistoryInput = ({
       const { data, error } = await supabase
         .from('courses')
         .select('*')
-        .eq('department', department)
-        .eq('requirement_type', requirementType);
+        .eq('department_id', department)
+        .eq('category', requirementType === 'major_required' || requirementType === 'major_elective' ? '전공' : '교양');
       
       if (error) {
         throw error;
@@ -142,18 +144,17 @@ const CourseHistoryInput = ({
 
   const selectCourseFromDb = (course: DbCourse) => {
     const mappedCategory = (): "majorRequired" | "majorElective" | "generalRequired" | "generalElective" => {
-      switch (course.requirement_type) {
-        case "major_required": return "majorRequired";
-        case "major_elective": return "majorElective";
-        case "general_required": return "generalRequired";
-        case "general_elective": return "generalElective";
-        default: return "generalElective";
+      const isRequired = course.course_code.includes('REQ') || course.course_name.includes('필수');
+      if (course.category === "전공") {
+        return isRequired ? "majorRequired" : "majorElective";
+      } else {
+        return isRequired ? "generalRequired" : "generalElective";
       }
     };
 
     const mappedCourse = {
-      code: course.code,
-      name: course.name,
+      code: course.course_code,
+      name: course.course_name,
       category: mappedCategory(),
       credit: course.credit,
       semester: new Date().getFullYear() + "-" + (new Date().getMonth() < 6 ? "1" : "2"),
@@ -163,7 +164,7 @@ const CourseHistoryInput = ({
     onAddCourse(mappedCourse);
     toast({
       title: "과목 추가",
-      description: `${course.name} 과목이 추가되었습니다.`,
+      description: `${course.course_name} 과목이 추가되었습니다.`,
     });
   };
   
@@ -216,13 +217,13 @@ const CourseHistoryInput = ({
                       <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-2">
                         {dbCourses.map(course => (
                           <div 
-                            key={course.id} 
+                            key={course.course_id} 
                             className="p-3 border rounded-md hover:bg-secondary/50 cursor-pointer transition-colors"
                             onClick={() => selectCourseFromDb(course)}
                           >
-                            <div className="font-medium">{course.name}</div>
+                            <div className="font-medium">{course.course_name}</div>
                             <div className="text-sm text-muted-foreground flex justify-between">
-                              <span>{course.code}</span>
+                              <span>{course.course_code}</span>
                               <span>{course.credit}학점</span>
                             </div>
                           </div>
@@ -244,13 +245,13 @@ const CourseHistoryInput = ({
                       <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-2">
                         {dbCourses.map(course => (
                           <div 
-                            key={course.id} 
+                            key={course.course_id} 
                             className="p-3 border rounded-md hover:bg-secondary/50 cursor-pointer transition-colors"
                             onClick={() => selectCourseFromDb(course)}
                           >
-                            <div className="font-medium">{course.name}</div>
+                            <div className="font-medium">{course.course_name}</div>
                             <div className="text-sm text-muted-foreground flex justify-between">
-                              <span>{course.code}</span>
+                              <span>{course.course_code}</span>
                               <span>{course.credit}학점</span>
                             </div>
                           </div>
@@ -272,13 +273,13 @@ const CourseHistoryInput = ({
                       <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-2">
                         {dbCourses.map(course => (
                           <div 
-                            key={course.id} 
+                            key={course.course_id} 
                             className="p-3 border rounded-md hover:bg-secondary/50 cursor-pointer transition-colors"
                             onClick={() => selectCourseFromDb(course)}
                           >
-                            <div className="font-medium">{course.name}</div>
+                            <div className="font-medium">{course.course_name}</div>
                             <div className="text-sm text-muted-foreground flex justify-between">
-                              <span>{course.code}</span>
+                              <span>{course.course_code}</span>
                               <span>{course.credit}학점</span>
                             </div>
                           </div>
@@ -300,13 +301,13 @@ const CourseHistoryInput = ({
                       <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-2">
                         {dbCourses.map(course => (
                           <div 
-                            key={course.id} 
+                            key={course.course_id} 
                             className="p-3 border rounded-md hover:bg-secondary/50 cursor-pointer transition-colors"
                             onClick={() => selectCourseFromDb(course)}
                           >
-                            <div className="font-medium">{course.name}</div>
+                            <div className="font-medium">{course.course_name}</div>
                             <div className="text-sm text-muted-foreground flex justify-between">
-                              <span>{course.code}</span>
+                              <span>{course.course_code}</span>
                               <span>{course.credit}학점</span>
                             </div>
                           </div>
