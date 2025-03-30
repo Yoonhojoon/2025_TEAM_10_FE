@@ -535,7 +535,7 @@ const CourseHistoryInput = ({
                           <AlertDialogHeader>
                             <AlertDialogTitle>과목 삭제</AlertDialogTitle>
                             <AlertDialogDescription>
-                              "{course.name}" 과목을 정말 삭제하시겠습��까? 이 작업은 되돌릴 수 없습니다.
+                              "{course.name}" 과목을 정말 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>

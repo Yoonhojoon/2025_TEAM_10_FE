@@ -1,3 +1,4 @@
+
 import React from "react";
 import { useSchedule } from "@/hooks/useSchedule";
 import Footer from "@/components/layout/Footer";
@@ -55,6 +56,22 @@ const Schedule = () => {
     setIsScheduleDialogOpen(false);
     setIsViewingSchedules(true);
   };
+
+  // This adapter function converts from Course to ScheduleCourse
+  const handleCourseAdd = (course: any) => {
+    const scheduleCourse = {
+      name: course.name,
+      code: course.code,
+      credit: course.credit,
+      day: "mon", // Default values
+      startTime: "10:00",
+      endTime: "12:00",
+      location: "미정",
+      fromHistory: true
+    };
+    
+    handleAddCourse(scheduleCourse);
+  };
   
   return (
     <div className="flex flex-col min-h-screen">
@@ -101,7 +118,7 @@ const Schedule = () => {
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <div className="mt-4">
-                        <CourseHistoryInput onAddCourse={handleAddCourse} />
+                        <CourseHistoryInput onAddCourse={handleCourseAdd} />
                       </div>
                     </AlertDialogContent>
                   </AlertDialog>
