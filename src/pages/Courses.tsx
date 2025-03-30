@@ -2,7 +2,6 @@
 import CourseHistoryInput from "@/components/courses/CourseHistoryInput";
 import Footer from "@/components/layout/Footer";
 import Header from "@/components/layout/Header";
-import { v4 as uuidv4 } from "uuid";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -93,9 +92,18 @@ const Courses = () => {
   }, [user, toast]);
   
   const handleAddCourse = async (course: Omit<Course, "id">) => {
-    if (!user) return;
+    if (!user) {
+      toast({
+        title: "로그인 필요",
+        description: "과목을 추가하려면 로그인이 필요합니다.",
+        variant: "destructive",
+      });
+      return;
+    }
     
     try {
+      console.log("Adding course:", course);
+      
       // First, find the course_id from the courses table
       const { data: courseData, error: courseError } = await supabase
         .from('courses')
@@ -103,7 +111,12 @@ const Courses = () => {
         .eq('course_code', course.code)
         .single();
       
-      if (courseError) throw courseError;
+      if (courseError) {
+        console.error("Course lookup error:", courseError);
+        throw courseError;
+      }
+      
+      console.log("Found course ID:", courseData.course_id);
       
       // Insert into enrollments table
       const { data: enrollmentData, error: enrollmentError } = await supabase
@@ -119,6 +132,8 @@ const Courses = () => {
         console.error("Enrollment error details:", enrollmentError);
         throw enrollmentError;
       }
+      
+      console.log("Enrollment successful:", enrollmentData);
       
       // Add to local state
       const newCourse = {

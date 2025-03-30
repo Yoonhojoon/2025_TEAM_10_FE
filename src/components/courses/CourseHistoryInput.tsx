@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/common/Card";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -67,20 +68,37 @@ const CourseHistoryInput = ({
       if (!user) return;
       
       setDepartmentError(null);
+      console.log("Fetching department for user ID:", user.id);
       
       try {
+        // Query the users table to get the department_id for the current user
         const { data, error } = await supabase
           .from('users')
-          .select()
-          .eq('user_id', user.id);
+          .select('department_id')
+          .eq('user_id', user.id)
+          .maybeSingle();
         
-        if (error) throw error;
+        if (error) {
+          console.error("Error fetching user department:", error);
+          throw error;
+        }
         
-        if (data && data.length > 0) {
-          console.log("Found user data:", data[0]);
-          setUserDepartmentId(data[0].department_id);
+        if (data && data.department_id) {
+          console.log("Found user department ID:", data.department_id);
+          setUserDepartmentId(data.department_id);
+          
+          // Log the department name for debugging
+          const { data: deptData, error: deptError } = await supabase
+            .from('departments')
+            .select('department_name')
+            .eq('department_id', data.department_id)
+            .single();
+            
+          if (!deptError && deptData) {
+            console.log("Department name:", deptData.department_name);
+          }
         } else {
-          console.log("No user record found for user:", user.id);
+          console.log("No department found for user:", user.id);
           setDepartmentError("사용자의 학과 정보를 찾을 수 없습니다. 프로필 설정을 완료해주세요.");
         }
       } catch (error) {
