@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Loader2, Trash2 } from "lucide-react";
 import ScheduleVisualizer from "./ScheduleVisualizer";
 
 interface GeneratedSchedule {
@@ -44,6 +45,8 @@ interface SavedSchedulesDialogProps {
   savedSchedules: SavedSchedule[];
   onApplySchedule: (schedule: GeneratedSchedule) => void;
   onSelectSchedule: (scheduleId: string) => void;
+  onDeleteSchedule: (scheduleId: string) => Promise<void>;
+  isDeletingSchedule?: boolean;
 }
 
 const SavedSchedulesDialog = ({
@@ -51,9 +54,18 @@ const SavedSchedulesDialog = ({
   onOpenChange,
   savedSchedules,
   onApplySchedule,
-  onSelectSchedule
+  onSelectSchedule,
+  onDeleteSchedule,
+  isDeletingSchedule = false
 }: SavedSchedulesDialogProps) => {
   const [selectedScheduleIndex, setSelectedScheduleIndex] = useState<number | null>(null);
+  const [scheduleIdToDelete, setScheduleIdToDelete] = useState<string | null>(null);
+  
+  const handleDeleteClick = async (scheduleId: string) => {
+    setScheduleIdToDelete(scheduleId);
+    await onDeleteSchedule(scheduleId);
+    setScheduleIdToDelete(null);
+  };
   
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -112,6 +124,19 @@ const SavedSchedulesDialog = ({
                       className="min-w-[110px]"
                     >
                       적용하기
+                    </Button>
+                    
+                    <Button
+                      size="icon"
+                      variant="destructive"
+                      onClick={() => handleDeleteClick(schedule.schedule_id)}
+                      disabled={isDeletingSchedule && scheduleIdToDelete === schedule.schedule_id}
+                    >
+                      {isDeletingSchedule && scheduleIdToDelete === schedule.schedule_id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
                     </Button>
                   </div>
                 </div>

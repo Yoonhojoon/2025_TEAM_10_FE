@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState } from "react";
 import { useSchedule } from "@/hooks/useSchedule";
 import Footer from "@/components/layout/Footer";
@@ -26,6 +25,7 @@ const Schedule = () => {
     savedSchedules,
     selectedSavedSchedule,
     isSavingSchedule,
+    isDeletingSchedule,
     setIsScheduleDialogOpen,
     setIsViewingSchedules,
     setSelectedSavedSchedule,
@@ -35,7 +35,8 @@ const Schedule = () => {
     handleViewSchedule,
     handleViewOtherSchedules,
     handleAddCourse,
-    handleSaveSchedule
+    handleSaveSchedule,
+    handleDeleteSchedule
   } = useSchedule();
   
   const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
@@ -55,15 +56,12 @@ const Schedule = () => {
     }))
   };
 
-  // Consolidate courses with the same code into a single entry
   const consolidatedCourses = useMemo(() => {
     const courseMap = new Map();
     
     courses.forEach(course => {
       if (courseMap.has(course.code)) {
-        // Course already exists in the map
         const existingCourse = courseMap.get(course.code);
-        // Add the day and time to the existing course
         existingCourse.scheduleTimes.push({
           id: course.id,
           day: course.day,
@@ -71,7 +69,6 @@ const Schedule = () => {
           endTime: course.endTime
         });
       } else {
-        // New course, add to map
         courseMap.set(course.code, {
           ...course,
           scheduleTimes: [{
@@ -84,11 +81,9 @@ const Schedule = () => {
       }
     });
     
-    // Return the values from the map
     return Array.from(courseMap.values());
   }, [courses]);
 
-  // Check for time conflicts
   const timeConflicts = useMemo(() => {
     const conflicts = [];
     
@@ -97,16 +92,13 @@ const Schedule = () => {
         const courseA = courses[i];
         const courseB = courses[j];
         
-        // Only check courses on the same day
         if (courseA.day !== courseB.day) continue;
         
-        // Parse times to compare
         const startA = parseInt(courseA.startTime.replace(':', ''));
         const endA = parseInt(courseA.endTime.replace(':', ''));
         const startB = parseInt(courseB.startTime.replace(':', ''));
         const endB = parseInt(courseB.endTime.replace(':', ''));
         
-        // Check for overlap
         if ((startA <= startB && endA > startB) || 
             (startB <= startA && endB > startA)) {
           conflicts.push({
@@ -124,7 +116,6 @@ const Schedule = () => {
   }, [courses]);
 
   const totalCredits = courses.reduce((total, course) => {
-    // Only count each course credit once based on the code
     const courseCodes = new Set();
     if (!courseCodes.has(course.code)) {
       courseCodes.add(course.code);
@@ -139,9 +130,8 @@ const Schedule = () => {
   };
 
   const handleCloseAvailableCoursesDialog = () => {
-    // The dialog is automatically closed when using the AlertDialog component
   };
-  
+
   const getDayLabel = (day: string): string => {
     const dayLabels: Record<string, string> = {
       "mon": "월요일",
@@ -289,6 +279,8 @@ const Schedule = () => {
         savedSchedules={savedSchedules}
         onApplySchedule={applySchedule}
         onSelectSchedule={setSelectedSavedSchedule}
+        onDeleteSchedule={handleDeleteSchedule}
+        isDeletingSchedule={isDeletingSchedule}
       />
       
       <SaveScheduleDialog

@@ -120,6 +120,7 @@ export const useSchedule = () => {
   const [savedSchedules, setSavedSchedules] = useState<SavedSchedule[]>([]);
   const [selectedSavedSchedule, setSelectedSavedSchedule] = useState<string | null>(null);
   const [isSavingSchedule, setIsSavingSchedule] = useState(false);
+  const [isDeletingSchedule, setIsDeletingSchedule] = useState(false);
   
   const { user } = useAuth();
   const { toast } = useToast();
@@ -171,6 +172,51 @@ export const useSchedule = () => {
   
   const handleDeleteCourse = (id: string) => {
     setCourses(courses.filter(course => course.id !== id));
+  };
+  
+  const handleDeleteSchedule = async (scheduleId: string) => {
+    if (!user) {
+      toast({
+        title: "로그인 필요",
+        description: "시간표 삭제를 위해 로그인이 필요합니다.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setIsDeletingSchedule(true);
+    
+    try {
+      const { error } = await supabase
+        .from('schedules')
+        .delete()
+        .eq('schedule_id', scheduleId)
+        .eq('user_id', user.id);
+        
+      if (error) {
+        throw error;
+      }
+      
+      setSavedSchedules(savedSchedules.filter(schedule => schedule.schedule_id !== scheduleId));
+      
+      if (selectedSavedSchedule === scheduleId) {
+        setSelectedSavedSchedule(null);
+      }
+      
+      toast({
+        title: "시간표 삭제 완료",
+        description: "시간표가 성공적으로 삭제되었습니다."
+      });
+    } catch (error) {
+      console.error('Error deleting schedule:', error);
+      toast({
+        title: "시간표 삭제 실패",
+        description: error instanceof Error ? error.message : "시간표를 삭제하는데 실패했습니다.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsDeletingSchedule(false);
+    }
   };
   
   const handleGenerateSchedules = async () => {
@@ -334,7 +380,6 @@ export const useSchedule = () => {
     setIsSavingSchedule(true);
     
     try {
-      // Calculate total credits - only count unique courses by code
       const uniqueCourses = new Map();
       courses.forEach(course => {
         if (!uniqueCourses.has(course.code)) {
@@ -343,7 +388,6 @@ export const useSchedule = () => {
       });
       const totalCredits = Array.from(uniqueCourses.values()).reduce((sum, course) => sum + course.credit, 0);
       
-      // Convert day times into a single string format like "월 10:00-11:30, 수 10:00-11:30"
       const coursesByCode = new Map();
       
       courses.forEach(course => {
@@ -369,7 +413,6 @@ export const useSchedule = () => {
         }
       });
       
-      // Create the schedule in the expected format
       const schedule = {
         name: scheduleName,
         태그: tags,
@@ -385,7 +428,6 @@ export const useSchedule = () => {
         설명: `${scheduleName} 시간표입니다.`
       };
       
-      // Cast the schedule to Json type to satisfy TypeScript
       const { data, error } = await supabase
         .from('schedules')
         .insert({
@@ -411,7 +453,7 @@ export const useSchedule = () => {
         
         toast({
           title: "시간표 저장 완료",
-          description: `"${scheduleName}" 시간표가 저장되었습니다.`
+          description: `"${scheduleName}" 시간표가 저장되었습니다."
         });
       }
     } catch (error) {
@@ -435,6 +477,7 @@ export const useSchedule = () => {
     savedSchedules,
     selectedSavedSchedule,
     isSavingSchedule,
+    isDeletingSchedule,
     setIsScheduleDialogOpen,
     setIsViewingSchedules,
     setSelectedSavedSchedule,
@@ -444,6 +487,7 @@ export const useSchedule = () => {
     applySchedule,
     handleViewSchedule,
     handleViewOtherSchedules,
-    handleSaveSchedule
+    handleSaveSchedule,
+    handleDeleteSchedule
   };
 };
