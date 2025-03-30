@@ -1,10 +1,10 @@
 
-import React from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import React, { useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
+import ScheduleVisualizer from "./ScheduleVisualizer";
 
 interface GeneratedSchedule {
   name: string;
@@ -46,94 +46,108 @@ const GeneratedSchedulesDialog = ({
   isGeneratingSchedules,
   onApplySchedule
 }: GeneratedSchedulesDialogProps) => {
+  const [selectedScheduleIndex, setSelectedScheduleIndex] = useState<number | null>(null);
+  
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto">
         <DialogHeader>
-          <DialogTitle>추천 시간표</DialogTitle>
+          <DialogTitle>생성된 시간표</DialogTitle>
           <DialogDescription>
-            AI가 생성한 추천 시간표입니다. 확인하고 필요한 시간표를 선택하세요.
+            AI가 생성한 시간표 조합입니다. 원하는 시간표를 선택하세요.
           </DialogDescription>
         </DialogHeader>
         
         {isGeneratingSchedules ? (
-          <div className="py-12 flex flex-col items-center justify-center text-center">
-            <Loader2 className="h-8 w-8 animate-spin mb-4" />
-            <p className="text-muted-foreground">시간표 생성 중...</p>
+          <div className="py-20 flex flex-col items-center justify-center">
+            <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
+            <p className="text-center text-muted-foreground">시간표를 생성 중입니다. 잠시만 기다려주세요...</p>
           </div>
-        ) : (
-          <Tabs defaultValue="option1" className="mt-4">
-            <TabsList className="grid grid-cols-3">
-              {generatedSchedules.map((schedule, index) => (
-                <TabsTrigger key={index} value={`option${index + 1}`}>
-                  {schedule.name}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-            
+        ) : generatedSchedules.length > 0 ? (
+          <div className="space-y-6 mt-4">
             {generatedSchedules.map((schedule, index) => (
-              <TabsContent key={index} value={`option${index + 1}`}>
-                <div className="space-y-4">
+              <div 
+                key={index} 
+                className={`border rounded-lg p-4 transition-colors ${selectedScheduleIndex === index ? 'bg-secondary/40 border-primary' : 'hover:bg-secondary/30'}`}
+              >
+                <div className="flex items-start justify-between mb-4">
                   <div>
-                    <h3 className="text-lg font-medium">
-                      총 {schedule.총_학점 || schedule.total_credits}학점
-                    </h3>
-                    {schedule.태그 && (
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {schedule.태그.map((tag, tagIndex) => (
-                          <Badge key={tagIndex} variant="secondary">
+                    <h3 className="text-lg font-medium">{schedule.name}</h3>
+                    {(schedule.태그 || []).length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {schedule.태그?.map((tag, idx) => (
+                          <Badge key={idx} variant="outline" className="text-xs">
                             {tag}
                           </Badge>
                         ))}
                       </div>
                     )}
-                    <p className="text-muted-foreground mt-1">
-                      {schedule.설명 || schedule.description}
+                    <p className="text-sm mt-2">
+                      총 {schedule.총_학점 || schedule.total_credits}학점
                     </p>
                   </div>
                   
-                  <div className="border rounded-md overflow-hidden">
-                    <table className="w-full">
-                      <thead className="bg-muted/50">
-                        <tr>
-                          <th className="px-4 py-2 text-left">과목 코드</th>
-                          <th className="px-4 py-2 text-left">과목명</th>
-                          <th className="px-4 py-2 text-left">학점</th>
-                          <th className="px-4 py-2 text-left">시간</th>
-                          <th className="px-4 py-2 text-left">강의실</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {(schedule.과목들 || schedule.courses || []).map((course, courseIndex) => {
-                          const courseName = "과목_이름" in course ? course.과목_이름 : course.course_name;
-                          const courseCode = "학수번호" in course ? course.학수번호 : course.course_code;
-                          const credit = "학점" in course ? course.학점 : course.credit;
-                          const scheduleTime = "강의_시간" in course ? course.강의_시간 : course.schedule_time;
-                          const classroom = "강의실" in course ? course.강의실 : course.classroom;
-                          
-                          return (
-                            <tr key={courseIndex} className="border-t">
-                              <td className="px-4 py-2">{courseCode}</td>
-                              <td className="px-4 py-2 font-medium">{courseName}</td>
-                              <td className="px-4 py-2">{credit}학점</td>
-                              <td className="px-4 py-2">{scheduleTime}</td>
-                              <td className="px-4 py-2">{classroom || "미정"}</td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                  
-                  <div className="flex justify-end">
-                    <Button onClick={() => onApplySchedule(schedule)}>
-                      이 시간표 보기
+                  <div className="flex gap-2">
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => setSelectedScheduleIndex(selectedScheduleIndex === index ? null : index)}
+                    >
+                      {selectedScheduleIndex === index ? "시간표 닫기" : "시간표 보기"}
+                    </Button>
+                    
+                    <Button 
+                      size="sm" 
+                      onClick={() => {
+                        onApplySchedule(schedule);
+                        onOpenChange(false);
+                      }}
+                    >
+                      적용하기
                     </Button>
                   </div>
                 </div>
-              </TabsContent>
+                
+                <div className="mt-2 text-sm mb-4">
+                  {schedule.설명 || schedule.description || "설명 없음"}
+                </div>
+                
+                {selectedScheduleIndex === index && (
+                  <div className="mt-4 animate-fade-in">
+                    <h4 className="font-medium mb-3">시간표 시각화</h4>
+                    <ScheduleVisualizer schedule={schedule} />
+                    
+                    <h4 className="font-medium mt-6 mb-3">수강 과목 목록</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {(schedule.courses || schedule.과목들 || []).map((course, idx) => {
+                        const courseName = course.course_name || course.과목_이름 || "Unknown";
+                        const courseCode = course.course_code || course.학수번호 || "Unknown";
+                        const courseCredit = course.credit || course.학점 || 0;
+                        const courseTime = course.schedule_time || course.강의_시간 || "";
+                        const courseRoom = course.classroom || course.강의실 || "";
+                        
+                        return (
+                          <div key={idx} className="p-3 rounded-lg border">
+                            <div className="font-medium">{courseName}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {courseCode} ({courseCredit}학점)
+                            </div>
+                            <div className="text-sm mt-1">
+                              {courseTime} - {courseRoom}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
             ))}
-          </Tabs>
+          </div>
+        ) : (
+          <div className="py-8 text-center text-muted-foreground">
+            아직 생성된 시간표가 없습니다. "추천 시간표 생성하기" 버튼을 클릭하여 시간표를 생성해보세요.
+          </div>
         )}
       </DialogContent>
     </Dialog>

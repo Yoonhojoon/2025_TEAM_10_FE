@@ -1,8 +1,9 @@
 
-import React from "react";
+import React, { useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import ScheduleVisualizer from "./ScheduleVisualizer";
 
 interface GeneratedSchedule {
   name: string;
@@ -52,9 +53,11 @@ const SavedSchedulesDialog = ({
   onApplySchedule,
   onSelectSchedule
 }: SavedSchedulesDialogProps) => {
+  const [selectedScheduleIndex, setSelectedScheduleIndex] = useState<number | null>(null);
+  
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto">
         <DialogHeader>
           <DialogTitle>저장된 시간표</DialogTitle>
           <DialogDescription>
@@ -64,12 +67,12 @@ const SavedSchedulesDialog = ({
         
         {savedSchedules.length > 0 ? (
           <div className="space-y-6 mt-4">
-            {savedSchedules.map((schedule) => (
+            {savedSchedules.map((schedule, index) => (
               <div 
                 key={schedule.schedule_id} 
-                className="border rounded-lg p-4 hover:bg-secondary/30 transition-colors"
+                className={`border rounded-lg p-4 transition-colors ${selectedScheduleIndex === index ? 'bg-secondary/40 border-primary' : 'hover:bg-secondary/30'}`}
               >
-                <div className="flex items-start justify-between">
+                <div className="flex items-start justify-between mb-4">
                   <div>
                     <h3 className="text-lg font-medium">{schedule.schedule_json.name}</h3>
                     <div className="text-sm text-muted-foreground">
@@ -89,21 +92,61 @@ const SavedSchedulesDialog = ({
                     </p>
                   </div>
                   
-                  <Button 
-                    size="sm" 
-                    onClick={() => {
-                      onApplySchedule(schedule.schedule_json);
-                      onSelectSchedule(schedule.schedule_id);
-                      onOpenChange(false);
-                    }}
-                  >
-                    적용하기
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => setSelectedScheduleIndex(selectedScheduleIndex === index ? null : index)}
+                    >
+                      {selectedScheduleIndex === index ? "시간표 닫기" : "시간표 보기"}
+                    </Button>
+                    
+                    <Button 
+                      size="sm" 
+                      onClick={() => {
+                        onApplySchedule(schedule.schedule_json);
+                        onSelectSchedule(schedule.schedule_id);
+                        onOpenChange(false);
+                      }}
+                    >
+                      적용하기
+                    </Button>
+                  </div>
                 </div>
                 
-                <div className="mt-4 text-sm">
+                <div className="mt-2 text-sm mb-4">
                   {schedule.schedule_json.설명 || schedule.schedule_json.description || "설명 없음"}
                 </div>
+                
+                {selectedScheduleIndex === index && (
+                  <div className="mt-4 animate-fade-in">
+                    <h4 className="font-medium mb-3">시간표 시각화</h4>
+                    <ScheduleVisualizer schedule={schedule.schedule_json} />
+                    
+                    <h4 className="font-medium mt-6 mb-3">수강 과목 목록</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {(schedule.schedule_json.courses || schedule.schedule_json.과목들 || []).map((course, idx) => {
+                        const courseName = course.course_name || course.과목_이름 || "Unknown";
+                        const courseCode = course.course_code || course.학수번호 || "Unknown";
+                        const courseCredit = course.credit || course.학점 || 0;
+                        const courseTime = course.schedule_time || course.강의_시간 || "";
+                        const courseRoom = course.classroom || course.강의실 || "";
+                        
+                        return (
+                          <div key={idx} className="p-3 rounded-lg border">
+                            <div className="font-medium">{courseName}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {courseCode} ({courseCredit}학점)
+                            </div>
+                            <div className="text-sm mt-1">
+                              {courseTime} - {courseRoom}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
