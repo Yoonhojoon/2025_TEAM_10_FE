@@ -42,38 +42,52 @@ const Dashboard = () => {
 
       try {
         setIsLoading(true);
+        console.log("User ID:", user.id);
+        console.log("User metadata:", user.user_metadata);
 
-        // 1. 사용자 정보 가져오기
-        const { data: userData, error: userError } = await supabase
-          .from('users')
+        // Get department_id from user_metadata
+        const departmentName = user.user_metadata?.department;
+        if (!departmentName) {
+          throw new Error("Department information not found in user metadata");
+        }
+
+        // 1. Find department_id from departments table
+        const { data: departmentData, error: departmentError } = await supabase
+          .from('departments')
           .select('department_id')
-          .eq('user_id', user.id)
+          .eq('department_name', departmentName)
           .single();
 
-        if (userError) throw userError;
+        if (departmentError) {
+          console.error("Error fetching department:", departmentError);
+          throw departmentError;
+        }
+
+        if (!departmentData) {
+          throw new Error("Department not found");
+        }
+
+        const departmentId = departmentData.department_id;
+        console.log("Department ID:", departmentId);
 
         // 2. 졸업 요건 정보 가져오기
         const { data: requirementData, error: requirementError } = await supabase
           .from('graduation_requirements')
           .select('*')
-          .eq('department_id', userData.department_id)
+          .eq('department_id', departmentId)
           .single();
 
-        if (requirementError) {
-          // 요건 정보가 없는 경우 기본값 설정
-          console.log("No graduation requirements found, using default values");
-          const defaultRequirements = {
-            required_total_credits: 130,
-            required_major_credits: 66,
-            required_general_credits: 40
-          };
+        // 요건 정보가 없는 경우 기본값 설정
+        const requirements = requirementError ? {
+          required_total_credits: 130,
+          required_major_credits: 66,
+          required_general_credits: 40
+        } : requirementData;
+
+        console.log("Graduation requirements:", requirements);
           
-          // 진행 데이터 계산 (수강 이력 기반)
-          await calculateProgress(defaultRequirements);
-        } else {
-          // 진행 데이터 계산 (수강 이력 기반)
-          await calculateProgress(requirementData);
-        }
+        // 진행 데이터 계산 (수강 이력 기반)
+        await calculateProgress(requirements);
       } catch (error: any) {
         console.error("Error fetching graduation data:", error);
         toast({
@@ -113,6 +127,8 @@ const Dashboard = () => {
 
         if (enrollmentsError) throw enrollmentsError;
 
+        console.log("Enrollments data:", enrollmentsData);
+
         // 4. 수강 이력 기반으로 진행 상황 계산
         let totalCredits = 0;
         let majorCredits = 0;
@@ -134,6 +150,10 @@ const Dashboard = () => {
             generalCredits += course.credit;
           }
         });
+
+        console.log("Total credits:", totalCredits);
+        console.log("Major credits:", majorCredits);
+        console.log("General credits:", generalCredits);
 
         // 필수/선택 구분 임시 계산 (실제로는 DB에서 가져와야 함)
         const majorRequired = (majorCredits * majorRequiredRatio);
