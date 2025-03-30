@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useToast } from "@/hooks/use-toast";
@@ -162,7 +163,7 @@ export const useSchedule = () => {
   
   const handleAddCourse = (course: Omit<ScheduleCourse, "id">) => {
     const newCourse = {
-      id: course.id || uuidv4(),
+      id: uuidv4(), // Generate a new ID instead of trying to access the non-existent id property
       ...course
     };
     setCourses([...courses, newCourse]);
