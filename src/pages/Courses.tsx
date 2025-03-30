@@ -3,7 +3,10 @@ import CourseHistoryInput from "@/components/courses/CourseHistoryInput";
 import Footer from "@/components/layout/Footer";
 import Header from "@/components/layout/Header";
 import { v4 as uuidv4 } from "uuid";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/components/auth/AuthProvider";
 
 interface Course {
   id: string;
@@ -12,77 +15,152 @@ interface Course {
   category: "majorRequired" | "majorElective" | "generalRequired" | "generalElective";
   credit: number;
   semester: string;
-  grade: string;
 }
 
-// Mock data for courses
-const initialCourses: Course[] = [
-  {
-    id: uuidv4(),
-    code: "CS101",
-    name: "컴퓨터 프로그래밍 기초",
-    category: "majorRequired",
-    credit: 3,
-    semester: "2021-1",
-    grade: "A+"
-  },
-  {
-    id: uuidv4(),
-    code: "MATH201",
-    name: "공학수학",
-    category: "majorRequired",
-    credit: 3,
-    semester: "2021-2",
-    grade: "B+"
-  },
-  {
-    id: uuidv4(),
-    code: "ENG102",
-    name: "영어회화",
-    category: "generalRequired",
-    credit: 2,
-    semester: "2021-1",
-    grade: "A"
-  },
-  {
-    id: uuidv4(),
-    code: "CS202",
-    name: "자료구조",
-    category: "majorRequired",
-    credit: 3,
-    semester: "2022-1",
-    grade: "A"
-  },
-  {
-    id: uuidv4(),
-    code: "HIST101",
-    name: "세계사의 이해",
-    category: "generalElective",
-    credit: 2,
-    semester: "2022-1",
-    grade: "B"
-  }
-];
-
 const Courses = () => {
-  const [courses, setCourses] = useState<Course[]>(initialCourses);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const { toast } = useToast();
+  const { user } = useAuth();
   
-  const handleAddCourse = (course: Omit<Course, "id">) => {
-    const newCourse = {
-      id: uuidv4(),
-      ...course
+  useEffect(() => {
+    const fetchUserEnrollments = async () => {
+      if (!user) return;
+      
+      setIsLoading(true);
+      try {
+        // Fetch user enrollments and join with course details
+        const { data: enrollmentsData, error: enrollmentsError } = await supabase
+          .from('enrollments')
+          .select(`
+            enrollment_id,
+            course_id,
+            courses (
+              course_id,
+              course_code,
+              course_name,
+              category,
+              credit
+            )
+          `)
+          .eq('user_id', user.id);
+        
+        if (enrollmentsError) throw enrollmentsError;
+        
+        if (enrollmentsData && enrollmentsData.length > 0) {
+          // Map the joined data to our Course interface
+          const formattedCourses = enrollmentsData.map(enrollment => {
+            const courseDetails = enrollment.courses;
+            
+            // Map the database category to our application category
+            const mapCategory = (): "majorRequired" | "majorElective" | "generalRequired" | "generalElective" => {
+              const category = courseDetails.category;
+              if (category === "전공필수" || category === "전공기초") return "majorRequired";
+              if (category === "전공선택") return "majorElective";
+              if (category === "배분이수교과") return "generalRequired";
+              return "generalElective";
+            };
+            
+            return {
+              id: enrollment.enrollment_id,
+              code: courseDetails.course_code,
+              name: courseDetails.course_name,
+              category: mapCategory(),
+              credit: courseDetails.credit,
+              semester: new Date().getFullYear() + "-" + (new Date().getMonth() < 6 ? "1" : "2"),
+            };
+          });
+          
+          setCourses(formattedCourses);
+        }
+      } catch (error) {
+        console.error("Error fetching user enrollments:", error);
+        toast({
+          title: "데이터 로딩 오류",
+          description: "수강 기록을 불러오는데 문제가 발생했습니다.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
     };
-    setCourses([newCourse, ...courses]);
+    
+    fetchUserEnrollments();
+  }, [user, toast]);
+  
+  const handleAddCourse = async (course: Omit<Course, "id">) => {
+    if (!user) return;
+    
+    try {
+      // First, find the course_id from the courses table
+      const { data: courseData, error: courseError } = await supabase
+        .from('courses')
+        .select('course_id')
+        .eq('course_code', course.code)
+        .single();
+      
+      if (courseError) throw courseError;
+      
+      // Insert into enrollments table
+      const { data: enrollmentData, error: enrollmentError } = await supabase
+        .from('enrollments')
+        .insert({
+          user_id: user.id,
+          course_id: courseData.course_id
+        })
+        .select()
+        .single();
+      
+      if (enrollmentError) throw enrollmentError;
+      
+      // Add to local state
+      const newCourse = {
+        id: enrollmentData.enrollment_id,
+        ...course
+      };
+      setCourses([newCourse, ...courses]);
+      
+      toast({
+        title: "과목 추가 완료",
+        description: `${course.name} 과목이 추가되었습니다.`,
+      });
+    } catch (error) {
+      console.error("Error adding course:", error);
+      toast({
+        title: "과목 추가 오류",
+        description: "과목을 추가하는 중 문제가 발생했습니다.",
+        variant: "destructive",
+      });
+    }
   };
   
-  const handleDeleteCourse = (id: string) => {
-    setCourses(courses.filter(course => course.id !== id));
-  };
-  
-  const handleUpdateCourse = (id: string, updatedCourse: Partial<Course>) => {
-    setCourses(courses.map(course => 
-      course.id === id ? { ...course, ...updatedCourse } : course
-    ));
+  const handleDeleteCourse = async (id: string) => {
+    if (!user) return;
+    
+    try {
+      // Delete from enrollments table
+      const { error } = await supabase
+        .from('enrollments')
+        .delete()
+        .eq('enrollment_id', id);
+      
+      if (error) throw error;
+      
+      // Remove from local state
+      setCourses(courses.filter(course => course.id !== id));
+      
+      toast({
+        title: "과목 삭제 완료",
+        description: "선택한 과목이 삭제되었습니다.",
+      });
+    } catch (error) {
+      console.error("Error deleting course:", error);
+      toast({
+        title: "과목 삭제 오류",
+        description: "과목을 삭제하는 중 문제가 발생했습니다.",
+        variant: "destructive",
+      });
+    }
   };
   
   return (
@@ -103,7 +181,7 @@ const Courses = () => {
               courses={courses}
               onAddCourse={handleAddCourse}
               onDeleteCourse={handleDeleteCourse}
-              onUpdateCourse={handleUpdateCourse}
+              isLoading={isLoading}
             />
           </div>
         </div>

@@ -187,7 +187,12 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      course_category: "전공" | "교양"
+      course_category:
+        | "전공필수"
+        | "전공선택"
+        | "전공기초"
+        | "배분이수교과"
+        | "자유이수교과"
     }
     CompositeTypes: {
       [_ in never]: never

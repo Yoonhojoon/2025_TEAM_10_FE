@@ -1,13 +1,16 @@
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/common/Card";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Edit, PlusCircle, Trash2, Calendar } from "lucide-react";
-import { useState } from "react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Edit, PlusCircle, Trash2, Calendar, Loader2 } from "lucide-react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/components/auth/AuthProvider";
 
 interface Course {
   id: string;
@@ -16,14 +19,13 @@ interface Course {
   category: "majorRequired" | "majorElective" | "generalRequired" | "generalElective";
   credit: number;
   semester: string;
-  grade: string;
 }
 
 interface CourseHistoryInputProps {
   courses: Course[];
   onAddCourse: (course: Omit<Course, "id">) => void;
   onDeleteCourse: (id: string) => void;
-  onUpdateCourse: (id: string, course: Partial<Course>) => void;
+  isLoading: boolean;
 }
 
 // Updated to match the structure from Supabase courses table
@@ -31,7 +33,7 @@ interface DbCourse {
   course_id: string;
   course_code: string;
   course_name: string;
-  category: "전공" | "교양";
+  category: "전공필수" | "전공선택" | "전공기초" | "배분이수교과" | "자유이수교과";
   credit: number;
   department_id: string;
   schedule_time: string;
@@ -42,22 +44,48 @@ const CourseHistoryInput = ({
   courses,
   onAddCourse,
   onDeleteCourse,
-  onUpdateCourse
+  isLoading
 }: CourseHistoryInputProps) => {
   const [isAdding, setIsAdding] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
   const [newCourse, setNewCourse] = useState<Omit<Course, "id">>({
     code: "",
     name: "",
     category: "majorRequired",
     credit: 3,
-    semester: "",
-    grade: "A+"
+    semester: new Date().getFullYear() + "-" + (new Date().getMonth() < 6 ? "1" : "2"),
   });
   const [dbCourses, setDbCourses] = useState<DbCourse[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingCourses, setIsLoadingCourses] = useState(false);
+  const [userDepartmentId, setUserDepartmentId] = useState<string | null>(null);
+  
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
+  
+  // Fetch user's department ID
+  useEffect(() => {
+    const fetchUserDepartment = async () => {
+      if (!user) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('users')
+          .select('department_id')
+          .eq('user_id', user.id)
+          .single();
+        
+        if (error) throw error;
+        
+        if (data) {
+          setUserDepartmentId(data.department_id);
+        }
+      } catch (error) {
+        console.error('Error fetching user department:', error);
+      }
+    };
+    
+    fetchUserDepartment();
+  }, [user]);
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -74,39 +102,11 @@ const CourseHistoryInput = ({
       name: "",
       category: "majorRequired",
       credit: 3,
-      semester: "",
-      grade: "A+"
+      semester: new Date().getFullYear() + "-" + (new Date().getMonth() < 6 ? "1" : "2"),
     });
     setIsAdding(false);
   };
   
-  const handleStartEdit = (course: Course) => {
-    setEditingId(course.id);
-    setNewCourse({
-      code: course.code,
-      name: course.name,
-      category: course.category,
-      credit: course.credit,
-      semester: course.semester,
-      grade: course.grade
-    });
-  };
-  
-  const handleUpdateCourse = () => {
-    if (editingId) {
-      onUpdateCourse(editingId, newCourse);
-      setEditingId(null);
-      setNewCourse({
-        code: "",
-        name: "",
-        category: "majorRequired",
-        credit: 3,
-        semester: "",
-        grade: "A+"
-      });
-    }
-  };
-
   const handleNavigateToSchedule = () => {
     navigate('/schedule');
     toast({
@@ -116,14 +116,30 @@ const CourseHistoryInput = ({
     });
   };
 
-  const fetchCourses = async (department: string, requirementType: string) => {
-    setIsLoading(true);
+  const fetchCourses = async (tabValue: string) => {
+    if (!userDepartmentId) return;
+    
+    setIsLoadingCourses(true);
+    
     try {
-      const { data, error } = await supabase
-        .from('courses')
-        .select('*')
-        .eq('department_id', department)
-        .eq('category', requirementType === 'major_required' || requirementType === 'major_elective' ? '전공' : '교양');
+      let query = supabase.from('courses').select('*');
+      
+      // Filter major courses by department_id
+      if (tabValue === "major-required") {
+        query = query
+          .eq('department_id', userDepartmentId)
+          .in('category', ['전공필수', '전공기초']);
+      } else if (tabValue === "major-elective") {
+        query = query
+          .eq('department_id', userDepartmentId)
+          .eq('category', '전공선택');
+      } else if (tabValue === "general-required") {
+        query = query.eq('category', '배분이수교과');
+      } else if (tabValue === "general-elective") {
+        query = query.eq('category', '자유이수교과');
+      }
+      
+      const { data, error } = await query;
       
       if (error) {
         throw error;
@@ -138,17 +154,24 @@ const CourseHistoryInput = ({
         variant: "destructive",
       });
     } finally {
-      setIsLoading(false);
+      setIsLoadingCourses(false);
     }
   };
 
   const selectCourseFromDb = (course: DbCourse) => {
     const mappedCategory = (): "majorRequired" | "majorElective" | "generalRequired" | "generalElective" => {
-      const isRequired = course.course_code.includes('REQ') || course.course_name.includes('필수');
-      if (course.category === "전공") {
-        return isRequired ? "majorRequired" : "majorElective";
-      } else {
-        return isRequired ? "generalRequired" : "generalElective";
+      switch (course.category) {
+        case "전공필수":
+        case "전공기초":
+          return "majorRequired";
+        case "전공선택":
+          return "majorElective";
+        case "배분이수교과":
+          return "generalRequired";
+        case "자유이수교과":
+          return "generalElective";
+        default:
+          return "generalElective";
       }
     };
 
@@ -158,7 +181,6 @@ const CourseHistoryInput = ({
       category: mappedCategory(),
       credit: course.credit,
       semester: new Date().getFullYear() + "-" + (new Date().getMonth() < 6 ? "1" : "2"),
-      grade: "A+"
     };
 
     onAddCourse(mappedCourse);
@@ -202,14 +224,14 @@ const CourseHistoryInput = ({
               <div className="py-4">
                 <Tabs defaultValue="major-required" className="w-full">
                   <TabsList className="grid grid-cols-4 mb-4">
-                    <TabsTrigger value="major-required" onClick={() => fetchCourses("컴퓨터공학과", "major_required")}>전공필수</TabsTrigger>
-                    <TabsTrigger value="major-elective" onClick={() => fetchCourses("컴퓨터공학과", "major_elective")}>전공선택</TabsTrigger>
-                    <TabsTrigger value="general-required" onClick={() => fetchCourses("공통", "general_required")}>교양필수</TabsTrigger>
-                    <TabsTrigger value="general-elective" onClick={() => fetchCourses("공통", "general_elective")}>교양선택</TabsTrigger>
+                    <TabsTrigger value="major-required" onClick={() => fetchCourses("major-required")}>전공필수</TabsTrigger>
+                    <TabsTrigger value="major-elective" onClick={() => fetchCourses("major-elective")}>전공선택</TabsTrigger>
+                    <TabsTrigger value="general-required" onClick={() => fetchCourses("general-required")}>교양필수</TabsTrigger>
+                    <TabsTrigger value="general-elective" onClick={() => fetchCourses("general-elective")}>교양선택</TabsTrigger>
                   </TabsList>
                   
                   <TabsContent value="major-required" className="mt-0">
-                    {isLoading ? (
+                    {isLoadingCourses ? (
                       <div className="py-8 text-center text-muted-foreground">
                         과목 정보를 불러오는 중...
                       </div>
@@ -236,8 +258,9 @@ const CourseHistoryInput = ({
                     )}
                   </TabsContent>
                   
+                  {/* The other tab content sections follow the same pattern, just with different values */}
                   <TabsContent value="major-elective" className="mt-0">
-                    {isLoading ? (
+                    {isLoadingCourses ? (
                       <div className="py-8 text-center text-muted-foreground">
                         과목 정보를 불러오는 중...
                       </div>
@@ -265,7 +288,7 @@ const CourseHistoryInput = ({
                   </TabsContent>
                   
                   <TabsContent value="general-required" className="mt-0">
-                    {isLoading ? (
+                    {isLoadingCourses ? (
                       <div className="py-8 text-center text-muted-foreground">
                         과목 정보를 불러오는 중...
                       </div>
@@ -293,7 +316,7 @@ const CourseHistoryInput = ({
                   </TabsContent>
                   
                   <TabsContent value="general-elective" className="mt-0">
-                    {isLoading ? (
+                    {isLoadingCourses ? (
                       <div className="py-8 text-center text-muted-foreground">
                         과목 정보를 불러오는 중...
                       </div>
@@ -401,26 +424,6 @@ const CourseHistoryInput = ({
                   placeholder="2023-1"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">성적</label>
-                <select
-                  name="grade"
-                  value={newCourse.grade}
-                  onChange={handleInputChange}
-                  className="w-full p-2 border rounded-md"
-                >
-                  <option value="A+">A+</option>
-                  <option value="A">A</option>
-                  <option value="B+">B+</option>
-                  <option value="B">B</option>
-                  <option value="C+">C+</option>
-                  <option value="C">C</option>
-                  <option value="D+">D+</option>
-                  <option value="D">D</option>
-                  <option value="F">F</option>
-                  <option value="P">P (Pass)</option>
-                </select>
-              </div>
             </div>
             <div className="flex justify-end space-x-2">
               <Button variant="outline" onClick={() => setIsAdding(false)}>
@@ -433,217 +436,75 @@ const CourseHistoryInput = ({
           </div>
         )}
         
-        {editingId && (
-          <div className="mb-6 p-4 rounded-lg border bg-secondary/30 animate-scale-in">
-            <h4 className="font-medium mb-3">과목 수정</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">과목 코드</label>
-                <input
-                  type="text"
-                  name="code"
-                  value={newCourse.code}
-                  onChange={handleInputChange}
-                  className="w-full p-2 border rounded-md"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">과목명</label>
-                <input
-                  type="text"
-                  name="name"
-                  value={newCourse.name}
-                  onChange={handleInputChange}
-                  className="w-full p-2 border rounded-md"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">카테고리</label>
-                <select
-                  name="category"
-                  value={newCourse.category}
-                  onChange={handleInputChange}
-                  className="w-full p-2 border rounded-md"
-                >
-                  <option value="majorRequired">전공필수</option>
-                  <option value="majorElective">전공선택</option>
-                  <option value="generalRequired">교양필수</option>
-                  <option value="generalElective">교양선택</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">학점</label>
-                <select
-                  name="credit"
-                  value={newCourse.credit}
-                  onChange={handleInputChange}
-                  className="w-full p-2 border rounded-md"
-                >
-                  <option value="1">1학점</option>
-                  <option value="2">2학점</option>
-                  <option value="3">3학점</option>
-                  <option value="4">4학점</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">이수 학기</label>
-                <input
-                  type="text"
-                  name="semester"
-                  value={newCourse.semester}
-                  onChange={handleInputChange}
-                  className="w-full p-2 border rounded-md"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">성적</label>
-                <select
-                  name="grade"
-                  value={newCourse.grade}
-                  onChange={handleInputChange}
-                  className="w-full p-2 border rounded-md"
-                >
-                  <option value="A+">A+</option>
-                  <option value="A">A</option>
-                  <option value="B+">B+</option>
-                  <option value="B">B</option>
-                  <option value="C+">C+</option>
-                  <option value="C">C</option>
-                  <option value="D+">D+</option>
-                  <option value="D">D</option>
-                  <option value="F">F</option>
-                  <option value="P">P (Pass)</option>
-                </select>
-              </div>
-            </div>
-            <div className="flex justify-end space-x-2">
-              <Button variant="outline" onClick={() => setEditingId(null)}>
-                취소
-              </Button>
-              <Button onClick={handleUpdateCourse}>
-                저장
-              </Button>
-            </div>
+        {isLoading ? (
+          <div className="py-16 flex justify-center items-center">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <span className="ml-3 text-lg">수강 기록을 불러오는 중...</span>
+          </div>
+        ) : (
+          <div className="rounded-lg border overflow-hidden">
+            <Table>
+              <TableHeader className="bg-secondary/50">
+                <TableRow>
+                  <TableHead>과목 코드</TableHead>
+                  <TableHead>과목명</TableHead>
+                  <TableHead>카테고리</TableHead>
+                  <TableHead>학점</TableHead>
+                  <TableHead>학기</TableHead>
+                  <TableHead className="text-right">관리</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody className="bg-card">
+                {courses.map((course) => (
+                  <TableRow key={course.id} className="bg-card hover:bg-secondary/30 transition-colors">
+                    <TableCell>{course.code}</TableCell>
+                    <TableCell className="font-medium">{course.name}</TableCell>
+                    <TableCell>
+                      {course.category === "majorRequired" && "전공필수"}
+                      {course.category === "majorElective" && "전공선택"}
+                      {course.category === "generalRequired" && "교양필수"}
+                      {course.category === "generalElective" && "교양선택"}
+                    </TableCell>
+                    <TableCell>{course.credit}학점</TableCell>
+                    <TableCell>{course.semester}</TableCell>
+                    <TableCell className="text-right">
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <button
+                            className="text-red-600 hover:text-red-800 transition-colors"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>과목 삭제</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              "{course.name}" 과목을 정말 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>취소</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => onDeleteCourse(course.id)} className="bg-red-600 hover:bg-red-700">
+                              삭제
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {courses.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                      아직 등록된 과목이 없습니다. 과목을 추가해주세요.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
           </div>
         )}
-        
-        <div className="rounded-lg border overflow-hidden">
-          <table className="min-w-full divide-y divide-border">
-            <thead className="bg-secondary/50">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  과목 코드
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  과목명
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  카테고리
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  학점
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  학기
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  성적
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  관리
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-card divide-y divide-border">
-              {courses.map((course) => (
-                <tr key={course.id} className="bg-card hover:bg-secondary/30 transition-colors">
-                  <td className="px-4 py-3 text-sm">{course.code}</td>
-                  <td className="px-4 py-3 text-sm font-medium">{course.name}</td>
-                  <td className="px-4 py-3 text-sm">
-                    {course.category === "majorRequired" && "전공필수"}
-                    {course.category === "majorElective" && "전공선택"}
-                    {course.category === "generalRequired" && "교양필수"}
-                    {course.category === "generalElective" && "교양선택"}
-                  </td>
-                  <td className="px-4 py-3 text-sm">{course.credit}학점</td>
-                  <td className="px-4 py-3 text-sm">{course.semester}</td>
-                  <td className="px-4 py-3 text-sm">
-                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium
-                      ${course.grade === 'A+' || course.grade === 'A' || course.grade === 'P' 
-                        ? 'bg-emerald-100 text-emerald-800' 
-                        : course.grade === 'B+' || course.grade === 'B' 
-                        ? 'bg-blue-100 text-blue-800'
-                        : course.grade === 'C+' || course.grade === 'C'
-                        ? 'bg-yellow-100 text-yellow-800'
-                        : course.grade === 'D+' || course.grade === 'D'
-                        ? 'bg-orange-100 text-orange-800'
-                        : 'bg-red-100 text-red-800'
-                      }`}
-                    >
-                      {course.grade}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-right space-x-1">
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <button
-                          className="text-blue-600 hover:text-blue-800 transition-colors"
-                        >
-                          <Edit size={16} />
-                        </button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>과목 수정</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            "{course.name}" 과목을 수정하시겠습니까?
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>취소</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => handleStartEdit(course)}>
-                            수정
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                    
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <button
-                          className="text-red-600 hover:text-red-800 transition-colors ml-2"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>과목 삭제</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            "{course.name}" 과목을 정말 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>취소</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => onDeleteCourse(course.id)} className="bg-red-600 hover:bg-red-700">
-                            삭제
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </td>
-                </tr>
-              ))}
-              {courses.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
-                    아직 등록된 과목이 없습니다. 과목을 추가해주세요.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
       </CardContent>
     </Card>
   );
