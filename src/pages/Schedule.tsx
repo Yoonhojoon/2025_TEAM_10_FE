@@ -8,11 +8,12 @@ import GeneratedSchedulesDialog from "@/components/schedule/GeneratedSchedulesDi
 import SavedSchedulesDialog from "@/components/schedule/SavedSchedulesDialog";
 import ScheduleVisualizer from "@/components/schedule/ScheduleVisualizer";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/common/Card";
-import { Trash2, GraduationCap, BookPlus } from "lucide-react";
+import { Trash2, GraduationCap, BookPlus, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import GraduationRequirementsModal from "@/components/dashboard/GraduationRequirementsModal";
 import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import AvailableCoursesDialog from "@/components/schedule/AvailableCoursesDialog";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 const Schedule = () => {
   const {
@@ -82,6 +83,41 @@ const Schedule = () => {
     return Array.from(courseMap.values());
   }, [courses]);
 
+  // Check for time conflicts
+  const timeConflicts = useMemo(() => {
+    const conflicts = [];
+    
+    for (let i = 0; i < courses.length; i++) {
+      for (let j = i + 1; j < courses.length; j++) {
+        const courseA = courses[i];
+        const courseB = courses[j];
+        
+        // Only check courses on the same day
+        if (courseA.day !== courseB.day) continue;
+        
+        // Parse times to compare
+        const startA = parseInt(courseA.startTime.replace(':', ''));
+        const endA = parseInt(courseA.endTime.replace(':', ''));
+        const startB = parseInt(courseB.startTime.replace(':', ''));
+        const endB = parseInt(courseB.endTime.replace(':', ''));
+        
+        // Check for overlap
+        if ((startA <= startB && endA > startB) || 
+            (startB <= startA && endB > startA)) {
+          conflicts.push({
+            courseA: courseA.name,
+            courseB: courseB.name,
+            day: courseA.day,
+            timeA: `${courseA.startTime}-${courseA.endTime}`,
+            timeB: `${courseB.startTime}-${courseB.endTime}`
+          });
+        }
+      }
+    }
+    
+    return conflicts;
+  }, [courses]);
+
   const totalCredits = courses.reduce((total, course) => {
     // Only count each course credit once based on the code
     const courseCodes = new Set();
@@ -99,6 +135,17 @@ const Schedule = () => {
 
   const handleCloseAvailableCoursesDialog = () => {
     // The dialog is automatically closed when using the AlertDialog component
+  };
+  
+  const getDayLabel = (day: string): string => {
+    const dayLabels: Record<string, string> = {
+      "mon": "월요일",
+      "tue": "화요일",
+      "wed": "수요일",
+      "thu": "목요일",
+      "fri": "금요일",
+    };
+    return dayLabels[day] || day;
   };
   
   return (
@@ -146,6 +193,23 @@ const Schedule = () => {
                 </div>
               </CardHeader>
               <CardContent>
+                {timeConflicts.length > 0 && (
+                  <Alert className="mb-4" variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>시간표 충돌 발생</AlertTitle>
+                    <AlertDescription>
+                      <p className="mb-2">시간이 겹치는 과목이 있습니다:</p>
+                      <ul className="list-disc pl-5 space-y-1">
+                        {timeConflicts.map((conflict, index) => (
+                          <li key={index}>
+                            {getDayLabel(conflict.day)}: "{conflict.courseA}" ({conflict.timeA})와 "{conflict.courseB}" ({conflict.timeB})
+                          </li>
+                        ))}
+                      </ul>
+                    </AlertDescription>
+                  </Alert>
+                )}
+                
                 <div className="mb-6">
                   <ScheduleVisualizer schedule={currentSchedule} />
                 </div>
@@ -212,17 +276,6 @@ const Schedule = () => {
       />
     </div>
   );
-};
-
-const getDayLabel = (day: string): string => {
-  const dayLabels: Record<string, string> = {
-    "mon": "월요일",
-    "tue": "화요일",
-    "wed": "수요일",
-    "thu": "목요일",
-    "fri": "금요일",
-  };
-  return dayLabels[day] || day;
 };
 
 const getCourseColor = (courseCode: string): string => {
