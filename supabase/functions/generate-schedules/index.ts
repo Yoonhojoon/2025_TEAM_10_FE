@@ -36,10 +36,10 @@ serve(async (req) => {
       }
     );
 
-    // Get user information to determine grade level
+    // Get user information to determine department
     const { data: userData, error: userError } = await supabaseClient
       .from('users')
-      .select('grade, department_id')
+      .select('department_id')
       .eq('user_id', userId)
       .single();
 
@@ -51,7 +51,6 @@ serve(async (req) => {
       );
     }
 
-    const userGrade = userData.grade;
     const departmentId = userData.department_id;
 
     // Get all courses for the user's department
@@ -95,7 +94,7 @@ serve(async (req) => {
       3. 수업이 다양한 요일에 골고루 분산되도록 함
       4. 가능하면 다양한 과목 유형을 포함해야 함
 
-      다음 JSON 형식으로 정확히 3개의 시간표를 제공해주세요:
+      아래 형식으로 JSON 응답만 제공해주세요(추가 텍스트 없이):
       {
         "schedules": [
           {
@@ -116,8 +115,6 @@ serve(async (req) => {
           }
         ]
       }
-
-      응답에는 JSON만 포함해야 하며 추가 텍스트는 포함하지 않아야 합니다.
     `;
 
     // Call OpenAI API
@@ -156,13 +153,18 @@ serve(async (req) => {
     
     // Try to parse the JSON response from OpenAI
     try {
-      // Clean up the response if it contains markdown code blocks
+      // Clean up the response if it contains markdown code blocks or any other unnecessary characters
       let cleanContent = generatedContent;
+      
+      // Remove markdown code block syntax if present
       if (cleanContent.includes('```json')) {
         cleanContent = cleanContent.replace(/```json\n|\n```/g, '');
       } else if (cleanContent.includes('```')) {
         cleanContent = cleanContent.replace(/```\n|\n```/g, '');
       }
+      
+      // Additional cleanup for any leading/trailing whitespace
+      cleanContent = cleanContent.trim();
       
       const schedulesData = JSON.parse(cleanContent);
       
