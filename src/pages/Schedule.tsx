@@ -1,4 +1,3 @@
-
 import React from "react";
 import { useSchedule } from "@/hooks/useSchedule";
 import Footer from "@/components/layout/Footer";
@@ -54,16 +53,14 @@ const Schedule = () => {
   const handleApplyAndShowSaved = (schedule: any) => {
     applySchedule(schedule);
     setIsScheduleDialogOpen(false);
-    setIsViewingSchedules(true);
   };
 
-  // This adapter function converts from Course to ScheduleCourse
   const handleCourseAdd = (course: any) => {
     const scheduleCourse = {
       name: course.name,
       code: course.code,
       credit: course.credit,
-      day: "mon", // Default values
+      day: "mon" as "mon" | "tue" | "wed" | "thu" | "fri",
       startTime: "10:00",
       endTime: "12:00",
       location: "미정",
