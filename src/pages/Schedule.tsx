@@ -8,6 +8,7 @@ import Header from "@/components/layout/Header";
 import ScheduleHeader from "@/components/schedule/ScheduleHeader";
 import GeneratedSchedulesDialog from "@/components/schedule/GeneratedSchedulesDialog";
 import SavedSchedulesDialog from "@/components/schedule/SavedSchedulesDialog";
+import ScheduleVisualizer from "@/components/schedule/ScheduleVisualizer";
 
 const Schedule = () => {
   const {
@@ -28,6 +29,22 @@ const Schedule = () => {
     handleViewSchedule,
     handleViewOtherSchedules
   } = useSchedule();
+  
+  // Create a schedule object from current courses for visualization
+  const currentSchedule = {
+    name: "현재 시간표",
+    courses: courses.map(course => ({
+      course_id: course.id,
+      course_name: course.name,
+      course_code: course.code,
+      credit: course.credit,
+      schedule_time: `${course.day === 'mon' ? '월' : 
+                      course.day === 'tue' ? '화' : 
+                      course.day === 'wed' ? '수' : 
+                      course.day === 'thu' ? '목' : '금'} ${course.startTime}-${course.endTime}`,
+      classroom: course.location
+    }))
+  };
   
   return (
     <div className="flex flex-col min-h-screen">
@@ -52,6 +69,12 @@ const Schedule = () => {
                 onDeleteCourse={handleDeleteCourse}
                 onViewOtherSchedules={handleViewOtherSchedules}
               />
+              
+              {/* Always show the schedule visualizer, even when empty */}
+              <div className="mt-6">
+                <h3 className="text-lg font-medium mb-3">시간표 시각화</h3>
+                <ScheduleVisualizer schedule={currentSchedule} />
+              </div>
             </div>
             
             <div className="w-full lg:w-2/5">
