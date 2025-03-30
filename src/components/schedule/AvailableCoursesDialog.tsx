@@ -33,7 +33,7 @@ const AvailableCoursesDialog: React.FC<AvailableCoursesDialogProps> = ({ onAddCo
   const [filteredCourses, setFilteredCourses] = useState<AvailableCourse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState<string>("");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -99,7 +99,7 @@ const AvailableCoursesDialog: React.FC<AvailableCoursesDialogProps> = ({ onAddCo
     }
     
     // Apply category filter
-    if (categoryFilter) {
+    if (categoryFilter && categoryFilter !== "all") {
       filtered = filtered.filter(course => course.category === categoryFilter);
     }
     
@@ -156,7 +156,7 @@ const AvailableCoursesDialog: React.FC<AvailableCoursesDialogProps> = ({ onAddCo
   };
 
   const categoryOptions = [
-    { value: "", label: "전체 카테고리" },
+    { value: "all", label: "전체 카테고리" },
     { value: "전공필수", label: "전공 필수" },
     { value: "전공기초", label: "전공 기초" },
     { value: "전공선택", label: "전공 선택" },
