@@ -1,3 +1,4 @@
+
 import SchedulePlanner from "@/components/schedule/SchedulePlanner";
 import GraduationRequirements from "@/components/schedule/GraduationRequirements";
 import Footer from "@/components/layout/Footer";
@@ -19,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue
 } from "@/components/ui/select";
+import { Json } from "@/integrations/supabase/types";
 
 interface ScheduleCourse {
   id: string;
@@ -188,11 +190,13 @@ interface GeneratedSchedule {
   description?: string;
 }
 
+// Update the SavedSchedule interface to be compatible with Supabase's Json type
 interface SavedSchedule {
   schedule_id: string;
   created_at: string;
   description_tags: string[] | null;
   schedule_json: GeneratedSchedule;
+  user_id?: string; // Added for completeness but might not be used in UI
 }
 
 const Schedule = () => {
@@ -223,8 +227,14 @@ const Schedule = () => {
         }
         
         if (data) {
-          setSavedSchedules(data as SavedSchedule[]);
-          console.log('Fetched saved schedules:', data);
+          // Cast the Json data to GeneratedSchedule
+          const typedSchedules: SavedSchedule[] = data.map(item => ({
+            ...item,
+            schedule_json: item.schedule_json as unknown as GeneratedSchedule
+          }));
+          
+          setSavedSchedules(typedSchedules);
+          console.log('Fetched saved schedules:', typedSchedules);
         }
       } catch (error) {
         console.error('Error fetching saved schedules:', error);
