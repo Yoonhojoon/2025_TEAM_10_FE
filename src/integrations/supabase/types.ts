@@ -97,22 +97,31 @@ export type Database = {
       graduation_requirements: {
         Row: {
           department_id: string
-          required_general_credits: number
-          required_major_credits: number
+          required_distribution: number
+          required_free: number
+          required_major_basic: number
+          required_major_elective: number
+          required_major_required: number
           required_total_credits: number
           requirement_id: string
         }
         Insert: {
           department_id: string
-          required_general_credits: number
-          required_major_credits: number
+          required_distribution?: number
+          required_free?: number
+          required_major_basic?: number
+          required_major_elective?: number
+          required_major_required?: number
           required_total_credits: number
           requirement_id?: string
         }
         Update: {
           department_id?: string
-          required_general_credits?: number
-          required_major_credits?: number
+          required_distribution?: number
+          required_free?: number
+          required_major_basic?: number
+          required_major_elective?: number
+          required_major_required?: number
           required_total_credits?: number
           requirement_id?: string
         }

@@ -85,11 +85,18 @@ const Dashboard = () => {
           .eq('department_id', departmentId)
           .single();
 
+        if (requirementError) {
+          console.error("Error fetching graduation requirements:", requirementError);
+        }
+
         // 요건 정보가 없는 경우 기본값 설정
         const requirements = requirementError ? {
           required_total_credits: 130,
-          required_major_credits: 66,
-          required_general_credits: 40
+          required_major_required: 30,
+          required_major_elective: 18,
+          required_major_basic: 18,
+          required_distribution: 30,
+          required_free: 34
         } : requirementData;
 
         console.log("Graduation requirements:", requirements);
@@ -143,46 +150,66 @@ const Dashboard = () => {
 
         // 4. 수강 이력 기반으로 진행 상황 계산
         let totalCredits = 0;
-        let majorCredits = 0;
-        let generalCredits = 0;
+        let majorRequiredCredits = 0;
+        let majorElectiveCredits = 0; 
+        let majorBasicCredits = 0;
+        let distributionCredits = 0;
+        let freeCredits = 0;
         
-        // 필수/선택 구분을 위한 임시 비율 (실제로는 DB에서 가져와야 함)
-        const majorRequiredRatio = 0.6; // 전공 필수 비율 (예: 60%)
-        const generalRequiredRatio = 0.7; // 교양 필수 비율 (예: 70%)
-
         enrollmentsData.forEach((enrollment: any) => {
           const course = enrollment.courses;
           if (!course) return;
           
-          totalCredits += course.credit;
+          const credit = course.credit;
+          totalCredits += credit;
           
-          if (course.category === '전공') {
-            majorCredits += course.credit;
-          } else if (course.category === '교양') {
-            generalCredits += course.credit;
+          // 카테고리에 따라 학점 분류
+          switch (course.category) {
+            case '전공필수':
+              majorRequiredCredits += credit;
+              break;
+            case '전공선택':
+              majorElectiveCredits += credit;
+              break;
+            case '전공기초':
+              majorBasicCredits += credit;
+              break;
+            case '배분이수교과':
+              distributionCredits += credit;
+              break;
+            default: // 자유이수교과 또는 기타
+              freeCredits += credit;
+              break;
           }
         });
 
         console.log("Total credits:", totalCredits);
-        console.log("Major credits:", majorCredits);
-        console.log("General credits:", generalCredits);
+        console.log("Major required credits:", majorRequiredCredits);
+        console.log("Major elective credits:", majorElectiveCredits);
+        console.log("Major basic credits:", majorBasicCredits);
+        console.log("Distribution credits:", distributionCredits);
+        console.log("Free credits:", freeCredits);
 
-        // 필수/선택 구분 임시 계산 (실제로는 DB에서 가져와야 함)
-        const majorRequired = (majorCredits * majorRequiredRatio);
-        const majorElective = (majorCredits * (1 - majorRequiredRatio));
-        const generalRequired = (generalCredits * generalRequiredRatio);
-        const generalElective = (generalCredits * (1 - generalRequiredRatio));
-
+        // 전체 전공 학점 및 전체 교양 학점 계산
+        const majorCredits = majorRequiredCredits + majorElectiveCredits + majorBasicCredits;
+        const generalCredits = distributionCredits + freeCredits;
+        
+        // 전체 필수 학점 계산
+        const requiredMajorCredits = requirements.required_major_required + 
+                                    requirements.required_major_elective + 
+                                    requirements.required_major_basic;
+        
+        const requiredGeneralCredits = requirements.required_distribution + 
+                                     requirements.required_free;
+        
+        // 진행률 계산
+        const majorRequiredPercent = Math.min(Math.round((majorRequiredCredits / Math.max(requirements.required_major_required, 1)) * 100), 100);
+        const majorElectivePercent = Math.min(Math.round((majorElectiveCredits / Math.max(requirements.required_major_elective, 1)) * 100), 100);
+        const generalRequiredPercent = Math.min(Math.round((distributionCredits / Math.max(requirements.required_distribution, 1)) * 100), 100);
+        const generalElectivePercent = Math.min(Math.round((freeCredits / Math.max(requirements.required_free, 1)) * 100), 100);
+        
         // 전체 진행률 계산
         const overall = Math.min(Math.round((totalCredits / requirements.required_total_credits) * 100), 100);
-        
-        // 전공 진행률 계산
-        const majorRequiredPercent = Math.min(Math.round((majorRequired / (requirements.required_major_credits * majorRequiredRatio)) * 100), 100);
-        const majorElectivePercent = Math.min(Math.round((majorElective / (requirements.required_major_credits * (1 - majorRequiredRatio))) * 100), 100);
-        
-        // 교양 진행률 계산
-        const generalRequiredPercent = Math.min(Math.round((generalRequired / (requirements.required_general_credits * generalRequiredRatio)) * 100), 100);
-        const generalElectivePercent = Math.min(Math.round((generalElective / (requirements.required_general_credits * (1 - generalRequiredRatio))) * 100), 100);
 
         setProgressData({
           overall,
@@ -193,9 +220,9 @@ const Dashboard = () => {
           totalCredits,
           requiredCredits: requirements.required_total_credits,
           majorCredits,
-          requiredMajorCredits: requirements.required_major_credits,
+          requiredMajorCredits,
           generalCredits,
-          requiredGeneralCredits: requirements.required_general_credits
+          requiredGeneralCredits
         });
       } catch (error) {
         console.error("Error calculating progress:", error);

@@ -19,6 +19,17 @@ interface ProgressData {
 }
 
 const ProgressDashboard = ({ data }: { data: ProgressData }) => {
+  // Calculate creditValues based on estimates from the percentages and required credits
+  const majorRequiredCredits = Math.round(data.requiredMajorCredits * (data.majorRequired / 100));
+  const majorElectiveCredits = Math.round(data.requiredMajorCredits * (data.majorElective / 100));
+  const generalRequiredCredits = Math.round(data.requiredGeneralCredits * (data.generalRequired / 100));
+  const generalElectiveCredits = Math.round(data.requiredGeneralCredits * (data.generalElective / 100));
+
+  const requiredMajorRequiredCredits = Math.round(data.requiredMajorCredits * 0.45); // Approximately for required major courses
+  const requiredMajorElectiveCredits = Math.round(data.requiredMajorCredits * 0.55); // Approximately for elective major courses
+  const requiredGenRequiredCredits = Math.round(data.requiredGeneralCredits * 0.7); // Approximately for required general courses
+  const requiredGenElectiveCredits = Math.round(data.requiredGeneralCredits * 0.3); // Approximately for elective general courses
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -125,7 +136,7 @@ const ProgressDashboard = ({ data }: { data: ProgressData }) => {
                   variant={data.majorRequired >= 100 ? "success" : "default"}
                 />
                 <div className="text-sm text-muted-foreground text-right mt-1">
-                  {Math.round(data.majorCredits * 0.6)} / {Math.round(data.requiredMajorCredits * 0.6)} 학점
+                  {majorRequiredCredits} / {requiredMajorRequiredCredits} 학점
                 </div>
               </div>
               
@@ -139,7 +150,7 @@ const ProgressDashboard = ({ data }: { data: ProgressData }) => {
                   variant={data.majorElective >= 100 ? "success" : "default"}
                 />
                 <div className="text-sm text-muted-foreground text-right mt-1">
-                  {Math.round(data.majorCredits * 0.4)} / {Math.round(data.requiredMajorCredits * 0.4)} 학점
+                  {majorElectiveCredits} / {requiredMajorElectiveCredits} 학점
                 </div>
               </div>
               
@@ -153,7 +164,7 @@ const ProgressDashboard = ({ data }: { data: ProgressData }) => {
                   variant={data.generalRequired >= 100 ? "success" : "warning"}
                 />
                 <div className="text-sm text-muted-foreground text-right mt-1">
-                  {Math.round(data.generalCredits * 0.7)} / {Math.round(data.requiredGeneralCredits * 0.7)} 학점
+                  {generalRequiredCredits} / {requiredGenRequiredCredits} 학점
                 </div>
               </div>
               
@@ -167,7 +178,7 @@ const ProgressDashboard = ({ data }: { data: ProgressData }) => {
                   variant={data.generalElective >= 100 ? "success" : "default"}
                 />
                 <div className="text-sm text-muted-foreground text-right mt-1">
-                  {Math.round(data.generalCredits * 0.3)} / {Math.round(data.requiredGeneralCredits * 0.3)} 학점
+                  {generalElectiveCredits} / {requiredGenElectiveCredits} 학점
                 </div>
               </div>
             </div>
