@@ -1,4 +1,3 @@
-
 import SchedulePlanner from "@/components/schedule/SchedulePlanner";
 import GraduationRequirements from "@/components/schedule/GraduationRequirements";
 import Footer from "@/components/layout/Footer";
@@ -11,8 +10,15 @@ import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Tag } from "lucide-react";
+import { Loader2, Tag, Calendar } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { 
+  Select,
+  SelectContent,
+  SelectItem, 
+  SelectTrigger,
+  SelectValue
+} from "@/components/ui/select";
 
 interface ScheduleCourse {
   id: string;
@@ -95,7 +101,6 @@ const initialCourses: ScheduleCourse[] = [
     location: "공학관 305호",
     credit: 3
   },
-  // 같은 시간대 다른 요일에 수업 (불가능한 시간표 예시)
   {
     id: uuidv4(),
     name: "운영체제",
@@ -106,7 +111,6 @@ const initialCourses: ScheduleCourse[] = [
     location: "공학관 505호",
     credit: 3
   },
-  // 같은 날 너무 많은 수업
   {
     id: uuidv4(),
     name: "인공지능",
@@ -137,7 +141,6 @@ const initialCourses: ScheduleCourse[] = [
     location: "공학관 607호",
     credit: 3
   },
-  // 학점 초과를 위한 추가 과목들
   {
     id: uuidv4(),
     name: "캡스톤디자인",
@@ -185,6 +188,13 @@ interface GeneratedSchedule {
   description?: string;
 }
 
+interface SavedSchedule {
+  schedule_id: string;
+  created_at: string;
+  description_tags: string[] | null;
+  schedule_json: GeneratedSchedule;
+}
+
 const Schedule = () => {
   const [courses, setCourses] = useState<ScheduleCourse[]>(initialCourses);
   const [isGeneratingSchedules, setIsGeneratingSchedules] = useState(false);
@@ -193,6 +203,41 @@ const Schedule = () => {
   const [selectedSchedule, setSelectedSchedule] = useState<GeneratedSchedule | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
+  const [savedSchedules, setSavedSchedules] = useState<SavedSchedule[]>([]);
+  const [isViewingSchedules, setIsViewingSchedules] = useState(false);
+  const [selectedSavedSchedule, setSelectedSavedSchedule] = useState<string | null>(null);
+  
+  useEffect(() => {
+    if (!user) return;
+    
+    const fetchSavedSchedules = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('schedules')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+          
+        if (error) {
+          throw error;
+        }
+        
+        if (data) {
+          setSavedSchedules(data as SavedSchedule[]);
+          console.log('Fetched saved schedules:', data);
+        }
+      } catch (error) {
+        console.error('Error fetching saved schedules:', error);
+        toast({
+          title: "저장된 시간표 불러오기 실패",
+          description: "저장된 시간표를 불러오는데 실패했습니다.",
+          variant: "destructive"
+        });
+      }
+    };
+    
+    fetchSavedSchedules();
+  }, [user, toast]);
   
   const handleAddCourse = (course: Omit<ScheduleCourse, "id">) => {
     const newCourse = {
@@ -219,7 +264,6 @@ const Schedule = () => {
     setIsGeneratingSchedules(true);
     
     try {
-      // Fetch the user's taken courses from the database
       const { data: enrollments, error: enrollmentsError } = await supabase
         .from('enrollments')
         .select('course_id')
@@ -229,10 +273,8 @@ const Schedule = () => {
         throw new Error('수강 내역을 불러오는데 실패했습니다.');
       }
       
-      // Extract the course IDs
       const takenCourseIds = enrollments.map(enrollment => enrollment.course_id);
       
-      // Call the edge function to generate schedules
       const { data, error } = await supabase.functions.invoke('generate-schedules', {
         body: {
           userId: user.id,
@@ -273,10 +315,8 @@ const Schedule = () => {
   };
   
   const applySchedule = (schedule: GeneratedSchedule) => {
-    // Convert the generated schedule to the format used by the app
     const newCourses: ScheduleCourse[] = [];
     
-    // Handle both old and new format
     const coursesList = schedule.과목들 || schedule.courses || [];
     
     coursesList.forEach(course => {
@@ -304,7 +344,6 @@ const Schedule = () => {
     });
     
     if (newCourses.length > 0) {
-      // Replace the current courses with the new schedule
       setCourses(newCourses);
       setIsScheduleDialogOpen(false);
       
@@ -321,6 +360,31 @@ const Schedule = () => {
     }
   };
   
+  const handleViewSchedule = (scheduleId: string) => {
+    const schedule = savedSchedules.find(s => s.schedule_id === scheduleId);
+    if (schedule) {
+      setSelectedSavedSchedule(scheduleId);
+      applySchedule(schedule.schedule_json);
+      
+      toast({
+        title: "시간표 적용",
+        description: "저장된 시간표가 적용되었습니다."
+      });
+    }
+  };
+  
+  const handleViewOtherSchedules = () => {
+    if (savedSchedules.length === 0) {
+      toast({
+        title: "저장된 시간표 없음",
+        description: "아직 저장된 시간표가 없습니다. 시간표를 생성하고 저장해보세요."
+      });
+      return;
+    }
+    
+    setIsViewingSchedules(true);
+  };
+  
   return (
     <div className="flex flex-col min-h-screen">
       <Header />
@@ -334,7 +398,7 @@ const Schedule = () => {
             </p>
           </div>
           
-          <div className="mb-6 flex flex-wrap gap-4">
+          <div className="mb-6 flex flex-wrap items-center gap-4">
             <Button 
               onClick={handleGenerateSchedules} 
               disabled={isGeneratingSchedules}
@@ -349,6 +413,40 @@ const Schedule = () => {
                 <>추천 시간표 생성하기</>
               )}
             </Button>
+            
+            {savedSchedules.length > 0 && (
+              <div className="flex items-center gap-2">
+                <Select
+                  value={selectedSavedSchedule || ""}
+                  onValueChange={handleViewSchedule}
+                >
+                  <SelectTrigger className="w-[200px]">
+                    <SelectValue placeholder="저장된 시간표 보기" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {savedSchedules.map((schedule) => (
+                      <SelectItem 
+                        key={schedule.schedule_id} 
+                        value={schedule.schedule_id}
+                      >
+                        {schedule.schedule_json.name}
+                        {schedule.description_tags && schedule.description_tags.length > 0 && 
+                          ` (${schedule.description_tags.join(', ')})`}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                
+                <Button 
+                  variant="outline"
+                  size="icon"
+                  onClick={handleViewOtherSchedules}
+                  title="저장된 시간표 목록 보기"
+                >
+                  <Calendar className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
           </div>
           
           <div className="flex flex-col lg:flex-row gap-6 animate-fade-in" style={{ animationDelay: "100ms" }}>
@@ -357,6 +455,7 @@ const Schedule = () => {
                 courses={courses}
                 onAddCourse={handleAddCourse}
                 onDeleteCourse={handleDeleteCourse}
+                onViewOtherSchedules={handleViewOtherSchedules}
               />
             </div>
             
@@ -369,7 +468,6 @@ const Schedule = () => {
       
       <Footer />
       
-      {/* Dialog for generated schedules */}
       <Dialog open={isScheduleDialogOpen} onOpenChange={setIsScheduleDialogOpen}>
         <DialogContent className="max-w-4xl">
           <DialogHeader>
@@ -422,7 +520,6 @@ const Schedule = () => {
                       </thead>
                       <tbody>
                         {(schedule.과목들 || schedule.courses || []).map((course, courseIndex) => {
-                          // Handle both formats
                           const courseName = "과목_이름" in course ? course.과목_이름 : course.course_name;
                           const courseCode = "학수번호" in course ? course.학수번호 : course.course_code;
                           const credit = "학점" in course ? course.학점 : course.credit;
@@ -452,6 +549,68 @@ const Schedule = () => {
               </TabsContent>
             ))}
           </Tabs>
+        </DialogContent>
+      </Dialog>
+      
+      <Dialog open={isViewingSchedules} onOpenChange={setIsViewingSchedules}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>저장된 시간표</DialogTitle>
+            <DialogDescription>
+              이전에 저장한 시간표 목록입니다. 적용할 시간표를 선택하세요.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {savedSchedules.length > 0 ? (
+            <div className="space-y-6 mt-4">
+              {savedSchedules.map((schedule) => (
+                <div 
+                  key={schedule.schedule_id} 
+                  className="border rounded-lg p-4 hover:bg-secondary/30 transition-colors"
+                >
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="text-lg font-medium">{schedule.schedule_json.name}</h3>
+                      <div className="text-sm text-muted-foreground">
+                        생성일: {new Date(schedule.created_at).toLocaleDateString()}
+                      </div>
+                      {schedule.description_tags && schedule.description_tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {schedule.description_tags.map((tag, idx) => (
+                            <Badge key={idx} variant="outline" className="text-xs">
+                              {tag}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                      <p className="text-sm mt-2">
+                        총 {schedule.schedule_json.총_학점 || schedule.schedule_json.total_credits}학점
+                      </p>
+                    </div>
+                    
+                    <Button 
+                      size="sm" 
+                      onClick={() => {
+                        applySchedule(schedule.schedule_json);
+                        setSelectedSavedSchedule(schedule.schedule_id);
+                        setIsViewingSchedules(false);
+                      }}
+                    >
+                      적용하기
+                    </Button>
+                  </div>
+                  
+                  <div className="mt-4 text-sm">
+                    {schedule.schedule_json.설명 || schedule.schedule_json.description || "설명 없음"}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="py-8 text-center text-muted-foreground">
+              아직 저장된 시간표가 없습니다. 시간표를 생성하고 저장해보세요.
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Button } from "@/components/common/Button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/common/Card";
@@ -36,6 +35,7 @@ interface SchedulePlannerProps {
   courses: ScheduleCourse[];
   onAddCourse: (course: Omit<ScheduleCourse, "id">) => void;
   onDeleteCourse: (id: string) => void;
+  onViewOtherSchedules?: () => void;
 }
 
 const MAX_CREDITS_PER_SEMESTER = 21; // 학기당 최대 학점
@@ -45,7 +45,8 @@ const MAX_COURSES_PER_DAY = 4; // 하루 최대 과목 수
 const SchedulePlanner = ({ 
   courses,
   onAddCourse,
-  onDeleteCourse
+  onDeleteCourse,
+  onViewOtherSchedules
 }: SchedulePlannerProps) => {
   const [isAdding, setIsAdding] = useState(false);
   const [newCourse, setNewCourse] = useState<Omit<ScheduleCourse, "id">>({
@@ -213,6 +214,7 @@ const SchedulePlanner = ({
             size="sm" 
             variant="outline"
             icon={<Eye size={16} />}
+            onClick={onViewOtherSchedules}
           >
             다른 계획 보기
           </Button>
