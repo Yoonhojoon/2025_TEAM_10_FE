@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useToast } from "@/hooks/use-toast";
@@ -151,7 +152,31 @@ export const parseScheduleTime = (scheduleTime: string): {
   endTime: string 
 } | null => {
   try {
-    // Example format: "MON 10:00-12:00"
+    // Handle both Korean and English format
+    // Korean format example: "월 10:00-11:30"
+    // English format example: "MON 10:00-12:00"
+    const koreanDayMap: Record<string, "mon" | "tue" | "wed" | "thu" | "fri"> = {
+      "월": "mon",
+      "화": "tue",
+      "수": "wed",
+      "목": "thu",
+      "금": "fri",
+    };
+    
+    const englishDayMap: Record<string, "mon" | "tue" | "wed" | "thu" | "fri"> = {
+      "mon": "mon",
+      "tue": "tue",
+      "wed": "wed",
+      "thu": "thu",
+      "fri": "fri",
+    };
+    
+    // Check if multiple schedules separated by comma (like "월 10:00-11:30, 수 13:00-14:30")
+    if (scheduleTime.includes(",")) {
+      // Take just the first schedule for now
+      scheduleTime = scheduleTime.split(",")[0].trim();
+    }
+    
     const parts = scheduleTime.split(' ');
     if (parts.length !== 2) return null;
     
@@ -160,13 +185,17 @@ export const parseScheduleTime = (scheduleTime: string): {
     if (timeRange.length !== 2) return null;
     
     let day: "mon" | "tue" | "wed" | "thu" | "fri";
-    switch (dayStr) {
-      case 'mon': day = 'mon'; break;
-      case 'tue': day = 'tue'; break;
-      case 'wed': day = 'wed'; break;
-      case 'thu': day = 'thu'; break;
-      case 'fri': day = 'fri'; break;
-      default: return null;
+    
+    // Try to match Korean day
+    if (koreanDayMap[parts[0]]) {
+      day = koreanDayMap[parts[0]];
+    } 
+    // Try to match English day
+    else if (englishDayMap[dayStr]) {
+      day = englishDayMap[dayStr];
+    } 
+    else {
+      return null;
     }
     
     return {
@@ -175,7 +204,7 @@ export const parseScheduleTime = (scheduleTime: string): {
       endTime: timeRange[1]
     };
   } catch (error) {
-    console.error("Error parsing schedule time:", error);
+    console.error("Error parsing schedule time:", error, "Input:", scheduleTime);
     return null;
   }
 };
@@ -310,6 +339,10 @@ export const useSchedule = () => {
     
     const coursesList = schedule.과목들 || schedule.courses || [];
     
+    // Log the schedule for debugging
+    console.log("Applying schedule:", schedule);
+    console.log("Courses to process:", coursesList);
+    
     coursesList.forEach(course => {
       const courseName = "과목_이름" in course ? course.과목_이름 : course.course_name;
       const courseCode = "학수번호" in course ? course.학수번호 : course.course_code;
@@ -317,7 +350,10 @@ export const useSchedule = () => {
       const scheduleTime = "강의_시간" in course ? course.강의_시간 : course.schedule_time;
       const classroom = "강의실" in course ? course.강의실 : course.classroom || "미정";
       
+      console.log("Processing course:", courseName, "with time:", scheduleTime);
+      
       const timeInfo = parseScheduleTime(scheduleTime);
+      console.log("Parsed time info:", timeInfo);
       
       if (timeInfo) {
         newCourses.push({
@@ -331,8 +367,12 @@ export const useSchedule = () => {
           credit: credit,
           fromHistory: false
         });
+      } else {
+        console.error("Failed to parse schedule time for course:", courseName, scheduleTime);
       }
     });
+    
+    console.log("Processed courses:", newCourses);
     
     if (newCourses.length > 0) {
       setCourses(newCourses);
