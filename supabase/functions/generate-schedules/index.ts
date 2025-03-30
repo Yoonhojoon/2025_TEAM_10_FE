@@ -55,7 +55,6 @@ serve(async (req) => {
     const departmentId = userData.department_id;
 
     // Get all courses for the user's department
-    // Note: 여기서 grade 필터링을 제거하고, 대신 department_id만 기준으로 가져옵니다
     const { data: availableCourses, error: coursesError } = await supabaseClient
       .from('courses')
       .select('*')
@@ -83,41 +82,42 @@ serve(async (req) => {
 
     console.log(`Found ${unregisteredCourses.length} unregistered courses for user's department`);
 
-    // Prepare the prompt for OpenAI
+    // Prepare the prompt for OpenAI with the specific format requested
     const promptContent = `
-      I need to create 3 different optimal class schedules using these available courses:
+      나는 다음 과목들을 사용하여 3개의 최적의 수업 시간표를 만들고 싶습니다:
       ${unregisteredCourses.map(course => 
-        `- ${course.course_name} (${course.course_code}): ${course.credit} credits, Schedule: ${course.schedule_time}, Room: ${course.classroom || 'TBA'}`
+        `- ${course.course_name} (${course.course_code}): ${course.credit}학점, 시간: ${course.schedule_time}, 장소: ${course.classroom || '미정'}`
       ).join('\n')}
 
-      Rules for creating schedules:
-      1. Classes must not have time conflicts
-      2. Each schedule should have between 15-21 total credits
-      3. Try to balance the courses across different days
-      4. Include a variety of course types if possible
+      시간표 생성 규칙:
+      1. 수업 시간이 겹치지 않아야 함
+      2. 각 시간표는 15-21학점 사이여야 함
+      3. 수업이 다양한 요일에 골고루 분산되도록 함
+      4. 가능하면 다양한 과목 유형을 포함해야 함
 
-      Respond with exactly 3 schedules in this JSON format:
+      다음 JSON 형식으로 정확히 3개의 시간표를 제공해주세요:
       {
         "schedules": [
           {
-            "name": "Schedule Option 1",
-            "courses": [
+            "name": "시간표 옵션 1",
+            "태그": ["균형잡힌", "알찬"],
+            "과목들": [
               {
                 "course_id": "[course_id]",
-                "course_name": "[course_name]",
-                "course_code": "[course_code]",
-                "credit": [credit],
-                "schedule_time": "[schedule_time]",
-                "classroom": "[classroom]"
+                "과목_이름": "[course_name]",
+                "학수번호": "[course_code]",
+                "학점": [credit],
+                "강의_시간": "[schedule_time]",
+                "강의실": "[classroom]"
               }
             ],
-            "total_credits": [sum of credits],
-            "description": "[brief description of this schedule's advantages]"
+            "총_학점": [sum of credits],
+            "설명": "[이 시간표의 장점에 대한 간략한 설명]"
           }
         ]
       }
 
-      Only include valid JSON in your response, no additional text.
+      응답에는 JSON만 포함해야 하며 추가 텍스트는 포함하지 않아야 합니다.
     `;
 
     // Call OpenAI API
@@ -152,20 +152,28 @@ serve(async (req) => {
 
     // Process and return the generated schedules
     const generatedContent = openAIData.choices[0].message.content;
+    console.log('Generated content:', generatedContent);
     
     // Try to parse the JSON response from OpenAI
     try {
-      const schedulesData = JSON.parse(generatedContent);
+      // Clean up the response if it contains markdown code blocks
+      let cleanContent = generatedContent;
+      if (cleanContent.includes('```json')) {
+        cleanContent = cleanContent.replace(/```json\n|\n```/g, '');
+      } else if (cleanContent.includes('```')) {
+        cleanContent = cleanContent.replace(/```\n|\n```/g, '');
+      }
+      
+      const schedulesData = JSON.parse(cleanContent);
       
       // Map the course IDs back to the actual course IDs from our database
-      // This ensures we use the correct IDs when adding to the schedule
       if (schedulesData.schedules) {
         schedulesData.schedules.forEach(schedule => {
-          if (schedule.courses) {
-            schedule.courses.forEach(course => {
+          if (schedule.과목들) {
+            schedule.과목들.forEach(course => {
               // Find the matching course in our unregistered courses
               const matchingCourse = unregisteredCourses.find(
-                dbCourse => dbCourse.course_code === course.course_code
+                dbCourse => dbCourse.course_code === course.학수번호 || dbCourse.course_name === course.과목_이름
               );
               
               if (matchingCourse) {

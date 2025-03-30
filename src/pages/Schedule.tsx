@@ -11,7 +11,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2 } from "lucide-react";
+import { Loader2, Tag } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 interface ScheduleCourse {
   id: string;
@@ -161,7 +162,16 @@ const initialCourses: ScheduleCourse[] = [
 
 interface GeneratedSchedule {
   name: string;
-  courses: {
+  태그?: string[];
+  과목들?: {
+    course_id: string;
+    과목_이름: string;
+    학수번호: string;
+    학점: number;
+    강의_시간: string;
+    강의실: string;
+  }[];
+  courses?: {
     course_id: string;
     course_name: string;
     course_code: string;
@@ -169,8 +179,10 @@ interface GeneratedSchedule {
     schedule_time: string;
     classroom: string;
   }[];
-  total_credits: number;
-  description: string;
+  총_학점?: number;
+  total_credits?: number;
+  설명?: string;
+  description?: string;
 }
 
 const Schedule = () => {
@@ -232,6 +244,8 @@ const Schedule = () => {
         throw new Error('시간표 생성에 실패했습니다.');
       }
       
+      console.log('Generated schedules data:', data);
+      
       if (data && data.schedules && data.schedules.length > 0) {
         setGeneratedSchedules(data.schedules);
         setIsScheduleDialogOpen(true);
@@ -262,19 +276,28 @@ const Schedule = () => {
     // Convert the generated schedule to the format used by the app
     const newCourses: ScheduleCourse[] = [];
     
-    schedule.courses.forEach(course => {
-      const timeInfo = parseScheduleTime(course.schedule_time);
+    // Handle both old and new format
+    const coursesList = schedule.과목들 || schedule.courses || [];
+    
+    coursesList.forEach(course => {
+      const courseName = "과목_이름" in course ? course.과목_이름 : course.course_name;
+      const courseCode = "학수번호" in course ? course.학수번호 : course.course_code;
+      const credit = "학점" in course ? course.학점 : course.credit;
+      const scheduleTime = "강의_시간" in course ? course.강의_시간 : course.schedule_time;
+      const classroom = "강의실" in course ? course.강의실 : course.classroom || "미정";
+      
+      const timeInfo = parseScheduleTime(scheduleTime);
       
       if (timeInfo) {
         newCourses.push({
           id: uuidv4(),
-          name: course.course_name,
-          code: course.course_code,
+          name: courseName,
+          code: courseCode,
           day: timeInfo.day,
           startTime: timeInfo.startTime,
           endTime: timeInfo.endTime,
-          location: course.classroom || "미정",
-          credit: course.credit,
+          location: classroom,
+          credit: credit,
           fromHistory: false
         });
       }
@@ -369,8 +392,21 @@ const Schedule = () => {
               <TabsContent key={index} value={`option${index + 1}`}>
                 <div className="space-y-4">
                   <div>
-                    <h3 className="text-lg font-medium">총 {schedule.total_credits}학점</h3>
-                    <p className="text-muted-foreground mt-1">{schedule.description}</p>
+                    <h3 className="text-lg font-medium">
+                      총 {schedule.총_학점 || schedule.total_credits}학점
+                    </h3>
+                    {schedule.태그 && (
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {schedule.태그.map((tag, tagIndex) => (
+                          <Badge key={tagIndex} variant="secondary">
+                            {tag}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                    <p className="text-muted-foreground mt-1">
+                      {schedule.설명 || schedule.description}
+                    </p>
                   </div>
                   
                   <div className="border rounded-md overflow-hidden">
@@ -385,15 +421,24 @@ const Schedule = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {schedule.courses.map((course, courseIndex) => (
-                          <tr key={courseIndex} className="border-t">
-                            <td className="px-4 py-2">{course.course_code}</td>
-                            <td className="px-4 py-2 font-medium">{course.course_name}</td>
-                            <td className="px-4 py-2">{course.credit}학점</td>
-                            <td className="px-4 py-2">{course.schedule_time}</td>
-                            <td className="px-4 py-2">{course.classroom || "미정"}</td>
-                          </tr>
-                        ))}
+                        {(schedule.과목들 || schedule.courses || []).map((course, courseIndex) => {
+                          // Handle both formats
+                          const courseName = "과목_이름" in course ? course.과목_이름 : course.course_name;
+                          const courseCode = "학수번호" in course ? course.학수번호 : course.course_code;
+                          const credit = "학점" in course ? course.학점 : course.credit;
+                          const scheduleTime = "강의_시간" in course ? course.강의_시간 : course.schedule_time;
+                          const classroom = "강의실" in course ? course.강의실 : course.classroom;
+                          
+                          return (
+                            <tr key={courseIndex} className="border-t">
+                              <td className="px-4 py-2">{courseCode}</td>
+                              <td className="px-4 py-2 font-medium">{courseName}</td>
+                              <td className="px-4 py-2">{credit}학점</td>
+                              <td className="px-4 py-2">{scheduleTime}</td>
+                              <td className="px-4 py-2">{classroom || "미정"}</td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
