@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/common/Card";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -29,7 +28,6 @@ interface CourseHistoryInputProps {
   isLoading: boolean;
 }
 
-// Updated to match the structure from Supabase courses table
 interface DbCourse {
   course_id: string;
   course_code: string;
@@ -64,7 +62,6 @@ const CourseHistoryInput = ({
   const { toast } = useToast();
   const { user } = useAuth();
   
-  // Fetch user's department ID
   useEffect(() => {
     const fetchUserDepartment = async () => {
       if (!user) return;
@@ -74,17 +71,16 @@ const CourseHistoryInput = ({
       try {
         const { data, error } = await supabase
           .from('users')
-          .select('department_id')
-          .eq('user_id', user.id)
-          .maybeSingle(); // Using maybeSingle instead of single to handle case where user might not have a department yet
+          .select()
+          .eq('user_id', user.id);
         
         if (error) throw error;
         
-        if (data) {
-          setUserDepartmentId(data.department_id);
-          console.log("Found user department ID:", data.department_id);
+        if (data && data.length > 0) {
+          console.log("Found user data:", data[0]);
+          setUserDepartmentId(data[0].department_id);
         } else {
-          console.log("No department found for user:", user.id);
+          console.log("No user record found for user:", user.id);
           setDepartmentError("사용자의 학과 정보를 찾을 수 없습니다. 프로필 설정을 완료해주세요.");
         }
       } catch (error) {
@@ -132,7 +128,6 @@ const CourseHistoryInput = ({
     try {
       let query = supabase.from('courses').select('*');
       
-      // Filter major courses by department_id only if we have a department ID
       if (tabValue === "major-required" && userDepartmentId) {
         query = query
           .eq('department_id', userDepartmentId)
@@ -284,7 +279,6 @@ const CourseHistoryInput = ({
                     )}
                   </TabsContent>
                   
-                  {/* Major Elective Tab */}
                   <TabsContent value="major-elective" className="mt-0">
                     {isLoadingCourses ? (
                       <div className="py-8 text-center text-muted-foreground">
@@ -317,7 +311,6 @@ const CourseHistoryInput = ({
                     )}
                   </TabsContent>
                   
-                  {/* General Required Tab */}
                   <TabsContent value="general-required" className="mt-0">
                     {isLoadingCourses ? (
                       <div className="py-8 text-center text-muted-foreground">
@@ -346,7 +339,6 @@ const CourseHistoryInput = ({
                     )}
                   </TabsContent>
                   
-                  {/* General Elective Tab */}
                   <TabsContent value="general-elective" className="mt-0">
                     {isLoadingCourses ? (
                       <div className="py-8 text-center text-muted-foreground">
@@ -529,7 +521,7 @@ const CourseHistoryInput = ({
                 {courses.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                      아직 등록된 과목이 없습니다. 과목을 추가해주세요.
+                      아직 등록된 과목이 없습니��. 과목을 추가해주세요.
                     </TableCell>
                   </TableRow>
                 )}

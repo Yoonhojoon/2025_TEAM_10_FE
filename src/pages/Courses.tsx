@@ -115,7 +115,10 @@ const Courses = () => {
         .select()
         .single();
       
-      if (enrollmentError) throw enrollmentError;
+      if (enrollmentError) {
+        console.error("Enrollment error details:", enrollmentError);
+        throw enrollmentError;
+      }
       
       // Add to local state
       const newCourse = {
