@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Save, X, Tag } from "lucide-react";
+import { Save, X, Tag, Loader2 } from "lucide-react";
 
 interface SaveScheduleDialogProps {
   isOpen: boolean;
@@ -48,7 +48,6 @@ const SaveScheduleDialog = ({
     await onSave(scheduleName.trim(), tags);
     setScheduleName("");
     setTags([]);
-    onOpenChange(false);
   };
   
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -123,7 +122,7 @@ const SaveScheduleDialog = ({
           <Button onClick={handleSave} disabled={!scheduleName.trim() || isSaving}>
             {isSaving ? (
               <>
-                <span className="animate-spin mr-2">⟳</span>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 저장 중...
               </>
             ) : (

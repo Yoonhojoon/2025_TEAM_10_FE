@@ -334,26 +334,63 @@ export const useSchedule = () => {
     setIsSavingSchedule(true);
     
     try {
-      const schedule: GeneratedSchedule = {
+      // Calculate total credits - only count unique courses by code
+      const uniqueCourses = new Map();
+      courses.forEach(course => {
+        if (!uniqueCourses.has(course.code)) {
+          uniqueCourses.set(course.code, course);
+        }
+      });
+      const totalCredits = Array.from(uniqueCourses.values()).reduce((sum, course) => sum + course.credit, 0);
+      
+      // Convert day times into a single string format like "월 10:00-11:30, 수 10:00-11:30"
+      const coursesByCode = new Map();
+      
+      courses.forEach(course => {
+        const dayKorean = course.day === 'mon' ? '월' : 
+                         course.day === 'tue' ? '화' : 
+                         course.day === 'wed' ? '수' : 
+                         course.day === 'thu' ? '목' : '금';
+        
+        const timeInfo = `${dayKorean} ${course.startTime}-${course.endTime}`;
+        
+        if (coursesByCode.has(course.code)) {
+          const existingCourse = coursesByCode.get(course.code);
+          existingCourse.schedules.push(timeInfo);
+        } else {
+          coursesByCode.set(course.code, {
+            id: course.id,
+            name: course.name,
+            code: course.code,
+            credit: course.credit,
+            location: course.location,
+            schedules: [timeInfo]
+          });
+        }
+      });
+      
+      // Create the schedule in the expected format
+      const schedule = {
         name: scheduleName,
-        courses: courses.map(course => ({
+        태그: tags,
+        과목들: Array.from(coursesByCode.values()).map(course => ({
           course_id: course.id,
-          course_name: course.name,
-          course_code: course.code,
-          credit: course.credit,
-          schedule_time: `${course.day === 'mon' ? '월' : 
-                          course.day === 'tue' ? '화' : 
-                          course.day === 'wed' ? '수' : 
-                          course.day === 'thu' ? '목' : '금'} ${course.startTime}-${course.endTime}`,
-          classroom: course.location
-        }))
+          과목_이름: course.name,
+          학수번호: course.code,
+          학점: course.credit,
+          강의_시간: course.schedules.join(', '),
+          강의실: course.location
+        })),
+        총_학점: totalCredits,
+        설명: `${scheduleName} 시간표입니다.`
       };
       
+      // Cast the schedule to Json type to satisfy TypeScript
       const { data, error } = await supabase
         .from('schedules')
         .insert({
           user_id: user.id,
-          schedule_json: schedule as Json,
+          schedule_json: schedule as unknown as Json,
           description_tags: tags.length > 0 ? tags : null
         })
         .select()
