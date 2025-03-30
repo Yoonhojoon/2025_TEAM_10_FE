@@ -54,12 +54,12 @@ serve(async (req) => {
     const userGrade = userData.grade;
     const departmentId = userData.department_id;
 
-    // Get all courses for the user's grade and grade+1 in their department
+    // Get all courses for the user's department
+    // Note: 여기서 grade 필터링을 제거하고, 대신 department_id만 기준으로 가져옵니다
     const { data: availableCourses, error: coursesError } = await supabaseClient
       .from('courses')
       .select('*')
-      .eq('department_id', departmentId)
-      .in('grade', [userGrade, userGrade + 1]);
+      .eq('department_id', departmentId);
 
     if (coursesError) {
       console.error('Error fetching courses:', coursesError);
@@ -76,12 +76,12 @@ serve(async (req) => {
 
     if (unregisteredCourses.length === 0) {
       return new Response(
-        JSON.stringify({ message: 'No unregistered courses found for your grade level', schedules: [] }),
+        JSON.stringify({ message: 'No unregistered courses found for your department', schedules: [] }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log(`Found ${unregisteredCourses.length} unregistered courses for grade ${userGrade} and ${userGrade + 1}`);
+    console.log(`Found ${unregisteredCourses.length} unregistered courses for user's department`);
 
     // Prepare the prompt for OpenAI
     const promptContent = `
