@@ -35,24 +35,8 @@ const departments = [
   "사회학과",
 ];
 
-// 입학년도 목록 생성 (현재 연도 기준으로 10년 전까지)
-const getEntryYears = () => {
-  const currentYear = new Date().getFullYear();
-  const years = [];
-  for (let i = 0; i < 10; i++) {
-    years.push(currentYear - i);
-  }
-  return years;
-};
-
-const entryYears = getEntryYears();
-
-// 학번 자동 생성 (학과 + 입학년도 + 숫자)
-const generateStudentId = (department: string, entryYear: number) => {
-  const deptCode = departments.indexOf(department) + 1;
-  const randomNum = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-  return `${entryYear.toString().slice(-2)}${deptCode.toString().padStart(2, '0')}${randomNum}`;
-};
+// 학년 목록
+const grades = [1, 2, 3, 4];
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -68,13 +52,12 @@ const Auth = () => {
   const [signupPassword, setSignupPassword] = useState("");
   const [name, setName] = useState("");
   const [department, setDepartment] = useState<string>("");
-  const [entryYear, setEntryYear] = useState<number>(new Date().getFullYear());
-  const [studentId, setStudentId] = useState("");
+  const [grade, setGrade] = useState<number>(1);
 
   // 회원가입 처리
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!signupEmail || !signupPassword || !name || !department || !entryYear) {
+    if (!signupEmail || !signupPassword || !name || !department || !grade) {
       toast({
         title: "모든 필드를 입력해주세요",
         variant: "destructive",
@@ -84,9 +67,6 @@ const Auth = () => {
 
     setIsLoading(true);
 
-    // 학번이 입력되지 않은 경우 자동 생성
-    const finalStudentId = studentId || generateStudentId(department, entryYear);
-
     try {
       const { data, error } = await supabase.auth.signUp({
         email: signupEmail,
@@ -95,8 +75,7 @@ const Auth = () => {
           data: {
             name,
             department,
-            student_id: finalStudentId,
-            entry_year: entryYear,
+            grade,
           },
         },
       });
@@ -161,22 +140,6 @@ const Auth = () => {
       });
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  // 학과와 입학년도가 선택될 때 학번 자동 생성
-  const handleDepartmentChange = (value: string) => {
-    setDepartment(value);
-    if (value && entryYear) {
-      setStudentId(generateStudentId(value, entryYear));
-    }
-  };
-
-  const handleEntryYearChange = (value: string) => {
-    const year = parseInt(value);
-    setEntryYear(year);
-    if (department && year) {
-      setStudentId(generateStudentId(department, year));
     }
   };
 
@@ -279,7 +242,7 @@ const Auth = () => {
                   <Label htmlFor="department">학과</Label>
                   <Select 
                     value={department} 
-                    onValueChange={handleDepartmentChange}
+                    onValueChange={(value) => setDepartment(value)}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="학과를 선택하세요" />
@@ -294,34 +257,22 @@ const Auth = () => {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="entryYear">입학년도</Label>
+                  <Label htmlFor="grade">현재 학년</Label>
                   <Select 
-                    value={entryYear.toString()} 
-                    onValueChange={handleEntryYearChange}
+                    value={grade.toString()} 
+                    onValueChange={(value) => setGrade(parseInt(value))}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="입학년도를 선택하세요" />
+                      <SelectValue placeholder="학년을 선택하세요" />
                     </SelectTrigger>
                     <SelectContent>
-                      {entryYears.map((year) => (
-                        <SelectItem key={year} value={year.toString()}>
-                          {year}년
+                      {grades.map((g) => (
+                        <SelectItem key={g} value={g.toString()}>
+                          {g}학년
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="studentId">학번</Label>
-                  <Input
-                    id="studentId"
-                    type="text"
-                    value={studentId}
-                    onChange={(e) => setStudentId(e.target.value)}
-                    placeholder="학과와 입학년도 선택 시 자동 생성됩니다"
-                    readOnly
-                    className="bg-gray-50"
-                  />
                 </div>
                 <Button 
                   type="submit" 
