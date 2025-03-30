@@ -20,6 +20,10 @@ interface ProgressData {
   generalElective: number;
   totalCredits: number;
   requiredCredits: number;
+  majorCredits: number;
+  requiredMajorCredits: number;
+  generalCredits: number;
+  requiredGeneralCredits: number;
 }
 
 const Dashboard = () => {
@@ -33,6 +37,10 @@ const Dashboard = () => {
     generalElective: 0,
     totalCredits: 0,
     requiredCredits: 0,
+    majorCredits: 0,
+    requiredMajorCredits: 0,
+    generalCredits: 0,
+    requiredGeneralCredits: 0,
   });
   const [isLoading, setIsLoading] = useState(true);
 
@@ -105,6 +113,10 @@ const Dashboard = () => {
           generalElective: 45,
           totalCredits: 78,
           requiredCredits: 120,
+          majorCredits: 40,
+          requiredMajorCredits: 66,
+          generalCredits: 30,
+          requiredGeneralCredits: 40,
         });
       } finally {
         setIsLoading(false);
@@ -179,7 +191,11 @@ const Dashboard = () => {
           generalRequired: generalRequiredPercent,
           generalElective: generalElectivePercent,
           totalCredits,
-          requiredCredits: requirements.required_total_credits
+          requiredCredits: requirements.required_total_credits,
+          majorCredits,
+          requiredMajorCredits: requirements.required_major_credits,
+          generalCredits,
+          requiredGeneralCredits: requirements.required_general_credits
         });
       } catch (error) {
         console.error("Error calculating progress:", error);
@@ -271,6 +287,9 @@ const Dashboard = () => {
                             <span>선택 {progressData.majorElective}%</span>
                           </div>
                         </div>
+                        <div className="text-sm text-muted-foreground mt-2">
+                          {progressData.majorCredits}/{progressData.requiredMajorCredits} 학점
+                        </div>
                       </div>
                     </div>
                     
@@ -291,6 +310,9 @@ const Dashboard = () => {
                             <div className="h-2 w-2 rounded-full bg-amber-300"></div>
                             <span>선택 {progressData.generalElective}%</span>
                           </div>
+                        </div>
+                        <div className="text-sm text-muted-foreground mt-2">
+                          {progressData.generalCredits}/{progressData.requiredGeneralCredits} 학점
                         </div>
                       </div>
                     </div>

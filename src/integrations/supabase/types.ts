@@ -171,7 +171,6 @@ export type Database = {
           email: string
           grade: number
           password: string
-          student_number: string
           user_id: string
         }
         Insert: {
@@ -179,7 +178,6 @@ export type Database = {
           email: string
           grade: number
           password: string
-          student_number: string
           user_id?: string
         }
         Update: {
@@ -187,7 +185,6 @@ export type Database = {
           email?: string
           grade?: number
           password?: string
-          student_number?: string
           user_id?: string
         }
         Relationships: [

@@ -12,6 +12,10 @@ interface ProgressData {
   generalElective: number;
   totalCredits: number;
   requiredCredits: number;
+  majorCredits: number;
+  requiredMajorCredits: number;
+  generalCredits: number;
+  requiredGeneralCredits: number;
 }
 
 const ProgressDashboard = ({ data }: { data: ProgressData }) => {
@@ -104,7 +108,7 @@ const ProgressDashboard = ({ data }: { data: ProgressData }) => {
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="md:col-span-2">
+        <Card className="md:col-span-3">
           <CardHeader>
             <CardTitle>졸업 요건 진행 상황</CardTitle>
             <CardDescription>카테고리별 졸업 요건 충족 현황</CardDescription>
@@ -120,6 +124,9 @@ const ProgressDashboard = ({ data }: { data: ProgressData }) => {
                   value={data.majorRequired} 
                   variant={data.majorRequired >= 100 ? "success" : "default"}
                 />
+                <div className="text-sm text-muted-foreground text-right mt-1">
+                  {Math.round(data.majorCredits * 0.6)} / {Math.round(data.requiredMajorCredits * 0.6)} 학점
+                </div>
               </div>
               
               <div className="space-y-2">
@@ -131,6 +138,9 @@ const ProgressDashboard = ({ data }: { data: ProgressData }) => {
                   value={data.majorElective}
                   variant={data.majorElective >= 100 ? "success" : "default"}
                 />
+                <div className="text-sm text-muted-foreground text-right mt-1">
+                  {Math.round(data.majorCredits * 0.4)} / {Math.round(data.requiredMajorCredits * 0.4)} 학점
+                </div>
               </div>
               
               <div className="space-y-2">
@@ -142,6 +152,9 @@ const ProgressDashboard = ({ data }: { data: ProgressData }) => {
                   value={data.generalRequired}
                   variant={data.generalRequired >= 100 ? "success" : "warning"}
                 />
+                <div className="text-sm text-muted-foreground text-right mt-1">
+                  {Math.round(data.generalCredits * 0.7)} / {Math.round(data.requiredGeneralCredits * 0.7)} 학점
+                </div>
               </div>
               
               <div className="space-y-2">
@@ -153,35 +166,11 @@ const ProgressDashboard = ({ data }: { data: ProgressData }) => {
                   value={data.generalElective}
                   variant={data.generalElective >= 100 ? "success" : "default"}
                 />
+                <div className="text-sm text-muted-foreground text-right mt-1">
+                  {Math.round(data.generalCredits * 0.3)} / {Math.round(data.requiredGeneralCredits * 0.3)} 학점
+                </div>
               </div>
             </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader>
-            <CardTitle>추천 과목</CardTitle>
-            <CardDescription>남은 졸업 요건 충족을 위한 추천 과목</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ul className="space-y-4">
-              <li className="p-3 rounded-lg bg-secondary/70 animate-fade-in">
-                <div className="font-medium">알고리즘 개론</div>
-                <div className="text-sm text-muted-foreground mt-1">전공필수 / 3학점</div>
-              </li>
-              <li className="p-3 rounded-lg bg-secondary/70 animate-fade-in" style={{ animationDelay: "100ms" }}>
-                <div className="font-medium">소프트웨어 공학</div>
-                <div className="text-sm text-muted-foreground mt-1">전공선택 / 3학점</div>
-              </li>
-              <li className="p-3 rounded-lg bg-secondary/70 animate-fade-in" style={{ animationDelay: "200ms" }}>
-                <div className="font-medium">영어 회화</div>
-                <div className="text-sm text-muted-foreground mt-1">교양필수 / 2학점</div>
-              </li>
-              <li className="p-3 rounded-lg bg-secondary/70 animate-fade-in" style={{ animationDelay: "300ms" }}>
-                <div className="font-medium">철학의 이해</div>
-                <div className="text-sm text-muted-foreground mt-1">교양선택 / 2학점</div>
-              </li>
-            </ul>
           </CardContent>
         </Card>
       </div>
