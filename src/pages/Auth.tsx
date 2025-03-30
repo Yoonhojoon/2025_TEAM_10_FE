@@ -68,20 +68,68 @@ const Auth = () => {
     setIsLoading(true);
 
     try {
-      const { data, error } = await supabase.auth.signUp({
+      // 1. 회원가입 (인증)
+      const { data: authData, error: authError } = await supabase.auth.signUp({
         email: signupEmail,
         password: signupPassword,
-        options: {
-          data: {
-            name,
-            department,
-            grade,
-          },
-        },
       });
 
-      if (error) {
-        throw error;
+      if (authError) {
+        throw authError;
+      }
+
+      if (authData.user) {
+        // 2. department_id 가져오기
+        const { data: departmentData, error: departmentError } = await supabase
+          .from('departments')
+          .select('department_id')
+          .eq('department_name', department)
+          .single();
+
+        if (departmentError) {
+          // 학과가 없으면 새로 만듦
+          const { data: newDepartment, error: newDepartmentError } = await supabase
+            .from('departments')
+            .insert({ department_name: department })
+            .select('department_id')
+            .single();
+
+          if (newDepartmentError) {
+            throw newDepartmentError;
+          }
+
+          // 3. 사용자 정보 저장
+          const { error: userError } = await supabase
+            .from('users')
+            .insert({
+              user_id: authData.user.id,
+              email: signupEmail,
+              department_id: newDepartment.department_id,
+              grade: grade,
+              student_number: "", // 학번 정보는 빈 문자열로
+              password: "" // 비밀번호는 저장하지 않음 (auth에서 관리)
+            });
+
+          if (userError) {
+            throw userError;
+          }
+        } else {
+          // 3. 사용자 정보 저장
+          const { error: userError } = await supabase
+            .from('users')
+            .insert({
+              user_id: authData.user.id,
+              email: signupEmail,
+              department_id: departmentData.department_id,
+              grade: grade,
+              student_number: "", // 학번 정보는 빈 문자열로
+              password: "" // 비밀번호는 저장하지 않음 (auth에서 관리)
+            });
+
+          if (userError) {
+            throw userError;
+          }
+        }
       }
 
       toast({
