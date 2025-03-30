@@ -15,6 +15,7 @@ export interface ScheduleCourse {
   location: string;
   credit: number;
   fromHistory?: boolean;
+  schedule_time?: string;
 }
 
 export interface GeneratedSchedule {
@@ -50,16 +51,12 @@ export interface SavedSchedule {
   user_id?: string;
 }
 
-// Helper function to map database schedule time to app format
 export const parseScheduleTime = (scheduleTime: string): { 
   day: "mon" | "tue" | "wed" | "thu" | "fri", 
   startTime: string, 
   endTime: string 
 }[] => {
   try {
-    // Handle both Korean and English format
-    // Korean format example: "월 10:00-11:30"
-    // English format example: "MON 10:00-12:00"
     const koreanDayMap: Record<string, "mon" | "tue" | "wed" | "thu" | "fri"> = {
       "월": "mon",
       "화": "tue",
@@ -78,7 +75,6 @@ export const parseScheduleTime = (scheduleTime: string): {
     
     const result: { day: "mon" | "tue" | "wed" | "thu" | "fri", startTime: string, endTime: string }[] = [];
     
-    // Check if multiple schedules separated by comma (like "월 10:00-11:30, 수 13:00-14:30")
     const schedules = scheduleTime.split(',').map(s => s.trim());
     
     for (const schedule of schedules) {
@@ -91,11 +87,9 @@ export const parseScheduleTime = (scheduleTime: string): {
       
       let day: "mon" | "tue" | "wed" | "thu" | "fri";
       
-      // Try to match Korean day
       if (koreanDayMap[parts[0]]) {
         day = koreanDayMap[parts[0]];
       } 
-      // Try to match English day
       else if (englishDayMap[dayStr]) {
         day = englishDayMap[dayStr];
       } 
@@ -118,7 +112,6 @@ export const parseScheduleTime = (scheduleTime: string): {
 };
 
 export const useSchedule = () => {
-  // Initialize with an empty courses array instead of hardcoded data
   const [courses, setCourses] = useState<ScheduleCourse[]>([]);
   const [isGeneratingSchedules, setIsGeneratingSchedules] = useState(false);
   const [generatedSchedules, setGeneratedSchedules] = useState<GeneratedSchedule[]>([]);
@@ -146,7 +139,6 @@ export const useSchedule = () => {
         }
         
         if (data) {
-          // Cast the Json data to GeneratedSchedule
           const typedSchedules: SavedSchedule[] = data.map(item => ({
             ...item,
             schedule_json: item.schedule_json as unknown as GeneratedSchedule
@@ -170,7 +162,7 @@ export const useSchedule = () => {
   
   const handleAddCourse = (course: Omit<ScheduleCourse, "id">) => {
     const newCourse = {
-      id: uuidv4(),
+      id: course.id || uuidv4(),
       ...course
     };
     setCourses([...courses, newCourse]);
@@ -248,7 +240,6 @@ export const useSchedule = () => {
     
     const coursesList = schedule.과목들 || schedule.courses || [];
     
-    // Log the schedule for debugging
     console.log("Applying schedule:", schedule);
     console.log("Courses to process:", coursesList);
     
@@ -275,7 +266,8 @@ export const useSchedule = () => {
             endTime: timeInfo.endTime,
             location: classroom,
             credit: credit,
-            fromHistory: false
+            fromHistory: false,
+            schedule_time: scheduleTime
           });
         });
       } else {

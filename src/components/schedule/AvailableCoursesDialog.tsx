@@ -1,0 +1,206 @@
+
+import React, { useState, useEffect } from "react";
+import { AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription } from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Search, Filter, Plus } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/components/auth/AuthProvider";
+import { useToast } from "@/hooks/use-toast";
+import { parseScheduleTime } from "@/hooks/useSchedule";
+
+interface AvailableCourse {
+  course_id: string;
+  course_name: string;
+  course_code: string;
+  credit: number;
+  schedule_time: string;
+  classroom: string;
+  category: string;
+}
+
+interface AvailableCoursesDialogProps {
+  onAddCourse: (course: any) => void;
+}
+
+const AvailableCoursesDialog: React.FC<AvailableCoursesDialogProps> = ({ onAddCourse }) => {
+  const [availableCourses, setAvailableCourses] = useState<AvailableCourse[]>([]);
+  const [filteredCourses, setFilteredCourses] = useState<AvailableCourse[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const { user } = useAuth();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchAvailableCourses = async () => {
+      if (!user) return;
+      
+      setIsLoading(true);
+      try {
+        // First, get IDs of courses the user has already taken
+        const { data: enrollments, error: enrollmentsError } = await supabase
+          .from('enrollments')
+          .select('course_id')
+          .eq('user_id', user.id);
+          
+        if (enrollmentsError) throw enrollmentsError;
+        
+        const enrolledCourseIds = enrollments.map(e => e.course_id);
+        
+        // Then, fetch courses that the user hasn't taken
+        const { data: coursesData, error: coursesError } = await supabase
+          .from('courses')
+          .select('*');
+          
+        if (coursesError) throw coursesError;
+        
+        // Filter out courses the user has already taken
+        const availableCoursesData = coursesData.filter(
+          course => !enrolledCourseIds.includes(course.course_id)
+        );
+        
+        setAvailableCourses(availableCoursesData);
+        setFilteredCourses(availableCoursesData);
+      } catch (error) {
+        console.error("Error fetching available courses:", error);
+        toast({
+          title: "데이터 로딩 오류",
+          description: "과목 목록을 불러오는데 문제가 발생했습니다.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchAvailableCourses();
+  }, [user, toast]);
+  
+  useEffect(() => {
+    if (searchTerm.trim() === "") {
+      setFilteredCourses(availableCourses);
+    } else {
+      const lowerSearchTerm = searchTerm.toLowerCase();
+      const filtered = availableCourses.filter(course => 
+        course.course_name.toLowerCase().includes(lowerSearchTerm) || 
+        course.course_code.toLowerCase().includes(lowerSearchTerm)
+      );
+      setFilteredCourses(filtered);
+    }
+  }, [searchTerm, availableCourses]);
+  
+  const handleAddCourse = (course: AvailableCourse) => {
+    const timeSlots = parseScheduleTime(course.schedule_time);
+    
+    // If no valid time slots could be parsed, add with default values
+    if (timeSlots.length === 0) {
+      onAddCourse({
+        id: course.course_id,
+        name: course.course_name,
+        code: course.course_code,
+        credit: course.credit,
+        day: "mon",
+        startTime: "10:00",
+        endTime: "12:00",
+        location: course.classroom || "미정",
+        schedule_time: course.schedule_time
+      });
+    } else {
+      // Add the first time slot directly
+      const firstSlot = timeSlots[0];
+      onAddCourse({
+        id: course.course_id,
+        name: course.course_name,
+        code: course.course_code,
+        credit: course.credit,
+        day: firstSlot.day,
+        startTime: firstSlot.startTime,
+        endTime: firstSlot.endTime,
+        location: course.classroom || "미정",
+        schedule_time: course.schedule_time
+      });
+    }
+    
+    toast({
+      title: "과목 추가 완료",
+      description: `${course.course_name} 과목이 시간표에 추가되었습니다.`,
+    });
+  };
+  
+  const mapCategoryLabel = (category: string): string => {
+    switch (category) {
+      case "전공필수": return "전공 필수";
+      case "전공기초": return "전공 기초";
+      case "전공선택": return "전공 선택";
+      case "배분이수교과": return "배분 이수";
+      default: return "일반 선택";
+    }
+  };
+  
+  return (
+    <AlertDialogContent className="max-w-3xl max-h-[90vh] overflow-auto">
+      <AlertDialogHeader>
+        <AlertDialogTitle>수강 가능한 과목 목록</AlertDialogTitle>
+        <AlertDialogDescription>
+          아직 수강하지 않은 과목을 시간표에 추가합니다.
+        </AlertDialogDescription>
+      </AlertDialogHeader>
+      
+      <div className="mt-4">
+        <div className="flex items-center mb-4">
+          <Search className="w-4 h-4 mr-2 text-muted-foreground" />
+          <Input
+            placeholder="과목명 또는 학수번호로 검색"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="flex-grow"
+          />
+        </div>
+        
+        {isLoading ? (
+          <div className="flex justify-center items-center h-40">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {filteredCourses.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                검색 결과가 없습니다.
+              </div>
+            ) : (
+              filteredCourses.map((course) => (
+                <div 
+                  key={course.course_id} 
+                  className="p-4 border rounded-md flex justify-between items-center hover:bg-accent/30 transition-colors"
+                >
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{course.course_name}</span>
+                      <span className="text-xs bg-secondary px-2 py-0.5 rounded-full">
+                        {mapCategoryLabel(course.category)}
+                      </span>
+                    </div>
+                    <div className="text-sm text-muted-foreground mt-1">{course.course_code} · {course.credit}학점</div>
+                    {course.schedule_time && (
+                      <div className="text-sm mt-1">{course.schedule_time}</div>
+                    )}
+                  </div>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={() => handleAddCourse(course)}
+                    title="시간표에 추가"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+      </div>
+    </AlertDialogContent>
+  );
+};
+
+export default AvailableCoursesDialog;

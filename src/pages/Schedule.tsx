@@ -1,3 +1,4 @@
+
 import React from "react";
 import { useSchedule } from "@/hooks/useSchedule";
 import Footer from "@/components/layout/Footer";
@@ -7,11 +8,11 @@ import GeneratedSchedulesDialog from "@/components/schedule/GeneratedSchedulesDi
 import SavedSchedulesDialog from "@/components/schedule/SavedSchedulesDialog";
 import ScheduleVisualizer from "@/components/schedule/ScheduleVisualizer";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/common/Card";
-import { Trash2, GraduationCap, BookOpen } from "lucide-react";
+import { Trash2, GraduationCap, BookPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import GraduationRequirementsModal from "@/components/dashboard/GraduationRequirementsModal";
 import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import CourseHistoryInput from "@/components/courses/CourseHistoryInput";
+import AvailableCoursesDialog from "@/components/schedule/AvailableCoursesDialog";
 
 const Schedule = () => {
   const {
@@ -40,7 +41,7 @@ const Schedule = () => {
       course_name: course.name,
       course_code: course.code,
       credit: course.credit,
-      schedule_time: `${course.day === 'mon' ? '월' : 
+      schedule_time: course.schedule_time || `${course.day === 'mon' ? '월' : 
                       course.day === 'tue' ? '화' : 
                       course.day === 'wed' ? '수' : 
                       course.day === 'thu' ? '목' : '금'} ${course.startTime}-${course.endTime}`,
@@ -53,21 +54,6 @@ const Schedule = () => {
   const handleApplyAndShowSaved = (schedule: any) => {
     applySchedule(schedule);
     setIsScheduleDialogOpen(false);
-  };
-
-  const handleCourseAdd = (course: any) => {
-    const scheduleCourse = {
-      name: course.name,
-      code: course.code,
-      credit: course.credit,
-      day: "mon" as "mon" | "tue" | "wed" | "thu" | "fri",
-      startTime: "10:00",
-      endTime: "12:00",
-      location: "미정",
-      fromHistory: true
-    };
-    
-    handleAddCourse(scheduleCourse);
   };
   
   return (
@@ -103,21 +89,11 @@ const Schedule = () => {
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button variant="outline" size="sm" className="flex gap-2">
-                        <BookOpen size={16} />
-                        수강 기록에서 추가
+                        <BookPlus size={16} />
+                        수강 가능한 과목 추가
                       </Button>
                     </AlertDialogTrigger>
-                    <AlertDialogContent className="max-w-3xl max-h-[90vh] overflow-auto">
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>수강 기록에서 과목 추가</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          이전에 수강했던, 또는 현재 수강중인 과목을 시간표에 추가합니다.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <div className="mt-4">
-                        <CourseHistoryInput onAddCourse={handleCourseAdd} />
-                      </div>
-                    </AlertDialogContent>
+                    <AvailableCoursesDialog onAddCourse={handleAddCourse} />
                   </AlertDialog>
                 </div>
               </CardHeader>
