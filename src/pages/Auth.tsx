@@ -72,6 +72,13 @@ const Auth = () => {
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: signupEmail,
         password: signupPassword,
+        options: {
+          data: {
+            name,
+            department,
+            grade,
+          },
+        },
       });
 
       if (authError) {
@@ -103,11 +110,8 @@ const Auth = () => {
             .from('users')
             .insert({
               user_id: authData.user.id,
-              email: signupEmail,
               department_id: newDepartment.department_id,
-              grade: grade,
-              student_number: "", // 학번 정보는 빈 문자열로
-              password: "" // 비밀번호는 저장하지 않음 (auth에서 관리)
+              grade: grade
             });
 
           if (userError) {
@@ -119,11 +123,8 @@ const Auth = () => {
             .from('users')
             .insert({
               user_id: authData.user.id,
-              email: signupEmail,
               department_id: departmentData.department_id,
-              grade: grade,
-              student_number: "", // 학번 정보는 빈 문자열로
-              password: "" // 비밀번호는 저장하지 않음 (auth에서 관리)
+              grade: grade
             });
 
           if (userError) {

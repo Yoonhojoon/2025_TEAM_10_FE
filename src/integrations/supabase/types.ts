@@ -92,13 +92,6 @@ export type Database = {
             referencedRelation: "courses"
             referencedColumns: ["course_id"]
           },
-          {
-            foreignKeyName: "enrollments_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["user_id"]
-          },
         ]
       }
       graduation_requirements: {
@@ -155,36 +148,25 @@ export type Database = {
           schedule_json?: Json
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "schedules_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["user_id"]
-          },
-        ]
+        Relationships: []
       }
       users: {
         Row: {
+          created_at: string | null
           department_id: string
-          email: string
           grade: number
-          password: string
           user_id: string
         }
         Insert: {
+          created_at?: string | null
           department_id: string
-          email: string
           grade: number
-          password: string
-          user_id?: string
+          user_id: string
         }
         Update: {
+          created_at?: string | null
           department_id?: string
-          email?: string
           grade?: number
-          password?: string
           user_id?: string
         }
         Relationships: [

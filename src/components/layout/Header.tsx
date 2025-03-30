@@ -1,8 +1,10 @@
+
 import { Button } from "@/components/common/Button";
 import { cn } from "@/lib/utils";
-import { BookOpenCheck, GraduationCap, Menu, X } from "lucide-react";
+import { BookOpenCheck, GraduationCap, LogOut, Menu, X } from "lucide-react";
 import { useState, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "@/components/auth/AuthProvider";
 
 const navItems = [
   { name: "대시보드", path: "/dashboard" },
@@ -14,6 +16,8 @@ const Header = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, signOut } = useAuth();
   
   const isLandingPage = location.pathname === "/";
   
@@ -29,6 +33,15 @@ const Header = () => {
   useEffect(() => {
     setMobileMenuOpen(false);
   }, [location.pathname]);
+  
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      navigate("/auth");
+    } catch (error) {
+      console.error("로그아웃 오류:", error);
+    }
+  };
   
   return (
     <header
@@ -74,9 +87,21 @@ const Header = () => {
               <Button size="sm">시작하기</Button>
             </>
           ) : (
-            <Button variant="outline" size="sm" icon={<BookOpenCheck size={16} />}>
-              졸업 요건 확인
-            </Button>
+            <>
+              <Button variant="outline" size="sm" icon={<BookOpenCheck size={16} />}>
+                졸업 요건 확인
+              </Button>
+              {user && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  icon={<LogOut size={16} />}
+                  onClick={handleLogout}
+                >
+                  로그아웃
+                </Button>
+              )}
+            </>
           )}
         </div>
         
@@ -113,13 +138,25 @@ const Header = () => {
                   <Button>시작하기</Button>
                 </>
               ) : (
-                <Button 
-                  variant="outline" 
-                  className="justify-center"
-                  icon={<BookOpenCheck size={18} />}
-                >
-                  졸업 요건 확인
-                </Button>
+                <>
+                  <Button 
+                    variant="outline" 
+                    className="justify-center"
+                    icon={<BookOpenCheck size={18} />}
+                  >
+                    졸업 요건 확인
+                  </Button>
+                  {user && (
+                    <Button 
+                      variant="outline" 
+                      className="justify-center"
+                      icon={<LogOut size={18} />}
+                      onClick={handleLogout}
+                    >
+                      로그아웃
+                    </Button>
+                  )}
+                </>
               )}
             </div>
           </div>
