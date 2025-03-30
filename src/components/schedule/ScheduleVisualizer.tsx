@@ -120,25 +120,29 @@ const ScheduleVisualizer: React.FC<ScheduleVisualizerProps> = ({ schedule }) => 
   
   // Calculate positioning for a course
   const getCourseStyle = (startTime: string, endTime: string, day: string) => {
-    // Parse time to get hour component
+    // Parse time to get hour and minute components
     const startHour = parseInt(startTime.split(":")[0]);
     const startMinute = parseInt(startTime.split(":")[1]);
     const endHour = parseInt(endTime.split(":")[0]);
     const endMinute = parseInt(endTime.split(":")[1]);
     
     // Calculate grid positions
-    const startPos = (startHour - 9) + (startMinute / 60);
-    const endPos = (endHour - 9) + (endMinute / 60);
-    const duration = endPos - startPos;
+    // Start row is based on the hour offset from 9:00 (first time slot)
+    // We add fractional value for minutes
+    const startRow = (startHour - 9) + (startMinute / 60);
+    const endRow = (endHour - 9) + (endMinute / 60);
     
-    const dayIndex = days.indexOf(day);
+    // Duration in grid rows (using fractional values for minutes)
+    const duration = endRow - startRow;
+    
+    // Find which day column to use (1-based)
+    const dayIndex = days.indexOf(day) + 2; // +2 because first column is for time labels
     
     return {
-      gridColumn: dayIndex + 1,
-      gridRow: `${startPos + 1} / span ${duration}`,
-      width: "100%",
-      height: "100%",
-      margin: "2px 0",
+      gridRowStart: startRow + 2, // +2 for header row and offset
+      gridRowEnd: 'span ' + (duration * 12), // Multiply by 12 for 5-minute intervals (12 per hour)
+      gridColumnStart: dayIndex,
+      gridColumnEnd: dayIndex + 1,
     };
   };
   
@@ -149,55 +153,81 @@ const ScheduleVisualizer: React.FC<ScheduleVisualizerProps> = ({ schedule }) => 
           className="grid relative"
           style={{ 
             gridTemplateColumns: "80px repeat(5, 1fr)",
-            gridTemplateRows: "auto repeat(11, 60px)",
+            gridTemplateRows: "auto repeat(144, 5px)", // 12 rows per hour (5 min intervals) * 12 hours
             gap: "1px"
           }}
         >
-          <div className="bg-transparent h-12 flex items-center justify-center font-medium">
+          {/* Header row with day labels */}
+          <div className="bg-transparent h-12 flex items-center justify-center font-medium col-span-1 row-span-1">
             <Clock className="h-5 w-5 text-muted-foreground" />
           </div>
           
           {days.map(day => (
             <div 
               key={day} 
-              className="bg-secondary h-12 rounded-md flex items-center justify-center font-medium"
+              className="bg-secondary h-12 rounded-md flex items-center justify-center font-medium col-span-1 row-span-1"
             >
               {dayLabels[day as keyof typeof dayLabels]}
             </div>
           ))}
           
+          {/* Time labels on the left and grid cells */}
           {timeSlots.map((time, index) => (
             <React.Fragment key={`row-${time}`}>
-              <div className="bg-transparent flex items-center justify-start pt-1 pl-2 text-sm text-muted-foreground">
+              {/* Time label */}
+              <div 
+                className="bg-transparent flex items-center justify-start pt-1 pl-2 text-sm text-muted-foreground"
+                style={{ 
+                  gridRowStart: index * 12 + 2, // +2 for header offset
+                  gridRowEnd: 'span 12', // Each hour spans 12 rows (5 min intervals)
+                  gridColumnStart: 1,
+                  gridColumnEnd: 2,
+                }}
+              >
                 {time}
               </div>
               
-              {days.map(day => (
+              {/* Grid cells for each day/time combination */}
+              {days.map((day, dayIndex) => (
                 <div
                   key={`cell-${day}-${time}`}
-                  className="bg-card/70 rounded-md border border-border/50 h-full"
+                  className="bg-card/70 rounded-md border border-border/50"
+                  style={{ 
+                    gridRowStart: index * 12 + 2, // +2 for header offset
+                    gridRowEnd: 'span 12', // Each hour spans 12 rows
+                    gridColumnStart: dayIndex + 2, // +2 for time label column
+                    gridColumnEnd: dayIndex + 3,
+                  }}
                 />
               ))}
             </React.Fragment>
           ))}
           
+          {/* Course blocks */}
           {visualCourses.map((course) => (
-            course.scheduleParsed.map((schedule, index) => (
-              <div
-                key={`${course.id}-${index}`}
-                style={{
-                  ...getCourseStyle(schedule.startTime, schedule.endTime, schedule.day),
-                  backgroundColor: getCourseColor(course),
-                }}
-                className="absolute rounded-md border border-primary/20 shadow-sm p-2 overflow-hidden transition-all hover:shadow-md z-10"
-              >
-                <div className="font-medium text-sm truncate">{course.name}</div>
-                <div className="text-xs text-foreground/70 mt-1 truncate">{course.location}</div>
-                <div className="text-xs text-foreground/70 truncate">
-                  {schedule.startTime} - {schedule.endTime}
+            course.scheduleParsed.map((schedule, index) => {
+              const style = getCourseStyle(schedule.startTime, schedule.endTime, schedule.day);
+              
+              return (
+                <div
+                  key={`${course.id}-${index}`}
+                  className="absolute rounded-md border border-primary/20 shadow-sm p-2 overflow-hidden transition-all hover:shadow-md z-10"
+                  style={{
+                    top: `calc(${style.gridRowStart - 1} * 5px + 48px)`, // 48px for header
+                    left: `calc(${style.gridColumnStart - 1} * 16.67% + 80px)`, // 16.67% for each day column, 80px for time column
+                    height: `calc(${style.gridRowEnd.split(' ')[1]} * 5px)`,
+                    width: 'calc(16.67% - 4px)', // 16.67% width for each day column, minus some padding
+                    backgroundColor: getCourseColor(course),
+                  }}
+                >
+                  <div className="font-medium text-sm truncate">{course.name}</div>
+                  <div className="text-xs text-foreground/70 mt-1 truncate">{course.location}</div>
+                  <div className="text-xs text-foreground/70 truncate">
+                    {schedule.startTime} - {schedule.endTime}
+                  </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           ))}
         </div>
       </div>
