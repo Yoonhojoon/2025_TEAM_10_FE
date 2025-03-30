@@ -4,7 +4,14 @@ import GraduationRequirements from "@/components/schedule/GraduationRequirements
 import Footer from "@/components/layout/Footer";
 import Header from "@/components/layout/Header";
 import { v4 as uuidv4 } from "uuid";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/components/auth/AuthProvider";
+import { useToast } from "@/hooks/use-toast";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Loader2 } from "lucide-react";
 
 interface ScheduleCourse {
   id: string;
@@ -17,6 +24,42 @@ interface ScheduleCourse {
   credit: number;
   fromHistory?: boolean; // Add flag to identify courses from history
 }
+
+// Helper function to map database schedule time to app format
+const parseScheduleTime = (scheduleTime: string): { 
+  day: "mon" | "tue" | "wed" | "thu" | "fri", 
+  startTime: string, 
+  endTime: string 
+} | null => {
+  try {
+    // Example format: "MON 10:00-12:00"
+    const parts = scheduleTime.split(' ');
+    if (parts.length !== 2) return null;
+    
+    const dayStr = parts[0].toLowerCase();
+    const timeRange = parts[1].split('-');
+    if (timeRange.length !== 2) return null;
+    
+    let day: "mon" | "tue" | "wed" | "thu" | "fri";
+    switch (dayStr) {
+      case 'mon': day = 'mon'; break;
+      case 'tue': day = 'tue'; break;
+      case 'wed': day = 'wed'; break;
+      case 'thu': day = 'thu'; break;
+      case 'fri': day = 'fri'; break;
+      default: return null;
+    }
+    
+    return {
+      day,
+      startTime: timeRange[0],
+      endTime: timeRange[1]
+    };
+  } catch (error) {
+    console.error("Error parsing schedule time:", error);
+    return null;
+  }
+};
 
 // Mock data for courses - Deliberately creating problematic schedule 
 // to demonstrate error cases
@@ -116,8 +159,28 @@ const initialCourses: ScheduleCourse[] = [
   }
 ];
 
+interface GeneratedSchedule {
+  name: string;
+  courses: {
+    course_id: string;
+    course_name: string;
+    course_code: string;
+    credit: number;
+    schedule_time: string;
+    classroom: string;
+  }[];
+  total_credits: number;
+  description: string;
+}
+
 const Schedule = () => {
   const [courses, setCourses] = useState<ScheduleCourse[]>(initialCourses);
+  const [isGeneratingSchedules, setIsGeneratingSchedules] = useState(false);
+  const [generatedSchedules, setGeneratedSchedules] = useState<GeneratedSchedule[]>([]);
+  const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);
+  const [selectedSchedule, setSelectedSchedule] = useState<GeneratedSchedule | null>(null);
+  const { user } = useAuth();
+  const { toast } = useToast();
   
   const handleAddCourse = (course: Omit<ScheduleCourse, "id">) => {
     const newCourse = {
@@ -131,6 +194,110 @@ const Schedule = () => {
     setCourses(courses.filter(course => course.id !== id));
   };
   
+  const handleGenerateSchedules = async () => {
+    if (!user) {
+      toast({
+        title: "로그인 필요",
+        description: "시간표 생성을 위해 로그인이 필요합니다.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setIsGeneratingSchedules(true);
+    
+    try {
+      // Fetch the user's taken courses from the database
+      const { data: enrollments, error: enrollmentsError } = await supabase
+        .from('enrollments')
+        .select('course_id')
+        .eq('user_id', user.id);
+        
+      if (enrollmentsError) {
+        throw new Error('수강 내역을 불러오는데 실패했습니다.');
+      }
+      
+      // Extract the course IDs
+      const takenCourseIds = enrollments.map(enrollment => enrollment.course_id);
+      
+      // Call the edge function to generate schedules
+      const { data, error } = await supabase.functions.invoke('generate-schedules', {
+        body: {
+          userId: user.id,
+          takenCourseIds
+        }
+      });
+      
+      if (error) {
+        throw new Error('시간표 생성에 실패했습니다.');
+      }
+      
+      if (data && data.schedules && data.schedules.length > 0) {
+        setGeneratedSchedules(data.schedules);
+        setIsScheduleDialogOpen(true);
+        toast({
+          title: "시간표 생성 완료",
+          description: `${data.schedules.length}개의 시간표가 생성되었습니다.`
+        });
+      } else {
+        toast({
+          title: "시간표 생성 결과",
+          description: data.message || "생성할 수 있는 시간표가 없습니다.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Error generating schedules:', error);
+      toast({
+        title: "오류 발생",
+        description: error instanceof Error ? error.message : "시간표 생성 중 오류가 발생했습니다.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsGeneratingSchedules(false);
+    }
+  };
+  
+  const applySchedule = (schedule: GeneratedSchedule) => {
+    // Convert the generated schedule to the format used by the app
+    const newCourses: ScheduleCourse[] = [];
+    
+    schedule.courses.forEach(course => {
+      const timeInfo = parseScheduleTime(course.schedule_time);
+      
+      if (timeInfo) {
+        newCourses.push({
+          id: uuidv4(),
+          name: course.course_name,
+          code: course.course_code,
+          day: timeInfo.day,
+          startTime: timeInfo.startTime,
+          endTime: timeInfo.endTime,
+          location: course.classroom || "미정",
+          credit: course.credit,
+          fromHistory: false
+        });
+      }
+    });
+    
+    if (newCourses.length > 0) {
+      // Replace the current courses with the new schedule
+      setCourses(newCourses);
+      setIsScheduleDialogOpen(false);
+      
+      toast({
+        title: "시간표 적용 완료",
+        description: `${schedule.name}이(가) 적용되었습니다.`
+      });
+    } else {
+      toast({
+        title: "시간표 적용 실패",
+        description: "시간표 데이터를 변환하는데 실패했습니다.",
+        variant: "destructive"
+      });
+    }
+  };
+  
   return (
     <div className="flex flex-col min-h-screen">
       <Header />
@@ -142,6 +309,23 @@ const Schedule = () => {
             <p className="text-muted-foreground">
               다음 학기 수강 계획을 세우고 최적의 시간표를 만드세요.
             </p>
+          </div>
+          
+          <div className="mb-6 flex flex-wrap gap-4">
+            <Button 
+              onClick={handleGenerateSchedules} 
+              disabled={isGeneratingSchedules}
+              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+            >
+              {isGeneratingSchedules ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  시간표 생성 중...
+                </>
+              ) : (
+                <>추천 시간표 생성하기</>
+              )}
+            </Button>
           </div>
           
           <div className="flex flex-col lg:flex-row gap-6 animate-fade-in" style={{ animationDelay: "100ms" }}>
@@ -161,6 +345,70 @@ const Schedule = () => {
       </main>
       
       <Footer />
+      
+      {/* Dialog for generated schedules */}
+      <Dialog open={isScheduleDialogOpen} onOpenChange={setIsScheduleDialogOpen}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>추천 시간표</DialogTitle>
+            <DialogDescription>
+              AI가 생성한 추천 시간표입니다. 적용할 시간표를 선택하세요.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <Tabs defaultValue="option1" className="mt-4">
+            <TabsList className="grid grid-cols-3">
+              {generatedSchedules.map((schedule, index) => (
+                <TabsTrigger key={index} value={`option${index + 1}`}>
+                  {schedule.name}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+            
+            {generatedSchedules.map((schedule, index) => (
+              <TabsContent key={index} value={`option${index + 1}`}>
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-lg font-medium">총 {schedule.total_credits}학점</h3>
+                    <p className="text-muted-foreground mt-1">{schedule.description}</p>
+                  </div>
+                  
+                  <div className="border rounded-md overflow-hidden">
+                    <table className="w-full">
+                      <thead className="bg-muted/50">
+                        <tr>
+                          <th className="px-4 py-2 text-left">과목 코드</th>
+                          <th className="px-4 py-2 text-left">과목명</th>
+                          <th className="px-4 py-2 text-left">학점</th>
+                          <th className="px-4 py-2 text-left">시간</th>
+                          <th className="px-4 py-2 text-left">강의실</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {schedule.courses.map((course, courseIndex) => (
+                          <tr key={courseIndex} className="border-t">
+                            <td className="px-4 py-2">{course.course_code}</td>
+                            <td className="px-4 py-2 font-medium">{course.course_name}</td>
+                            <td className="px-4 py-2">{course.credit}학점</td>
+                            <td className="px-4 py-2">{course.schedule_time}</td>
+                            <td className="px-4 py-2">{course.classroom || "미정"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  
+                  <div className="flex justify-end">
+                    <Button onClick={() => applySchedule(schedule)}>
+                      이 시간표 적용하기
+                    </Button>
+                  </div>
+                </div>
+              </TabsContent>
+            ))}
+          </Tabs>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

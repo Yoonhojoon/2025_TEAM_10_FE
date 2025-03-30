@@ -1,0 +1,6 @@
+
+project_id = "wykbkrwtflqsndnqdygu"
+
+[serve]
+cors = true
+port = 54321
