@@ -13,7 +13,6 @@ interface Course {
   name: string;
   category: "majorRequired" | "majorElective" | "generalRequired" | "generalElective";
   credit: number;
-  semester: string;
 }
 
 const Courses = () => {
@@ -67,8 +66,7 @@ const Courses = () => {
               code: courseDetails.course_code,
               name: courseDetails.course_name,
               category: mapCategory(),
-              credit: courseDetails.credit,
-              semester: new Date().getFullYear() + "-" + (new Date().getMonth() < 6 ? "1" : "2"),
+              credit: courseDetails.credit
             };
           });
           
@@ -96,6 +94,17 @@ const Courses = () => {
       toast({
         title: "로그인 필요",
         description: "과목을 추가하려면 로그인이 필요합니다.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // 중복 과목 확인
+    const isDuplicate = courses.some(existingCourse => existingCourse.code === course.code);
+    if (isDuplicate) {
+      toast({
+        title: "과목 중복",
+        description: "이미 추가된 과목입니다.",
         variant: "destructive",
       });
       return;

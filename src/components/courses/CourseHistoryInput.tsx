@@ -19,7 +19,6 @@ interface Course {
   name: string;
   category: "majorRequired" | "majorElective" | "generalRequired" | "generalElective";
   credit: number;
-  semester: string;
 }
 
 interface CourseHistoryInputProps {
@@ -51,8 +50,7 @@ const CourseHistoryInput = ({
     code: "",
     name: "",
     category: "majorRequired",
-    credit: 3,
-    semester: new Date().getFullYear() + "-" + (new Date().getMonth() < 6 ? "1" : "2"),
+    credit: 3
   });
   const [dbCourses, setDbCourses] = useState<DbCourse[]>([]);
   const [isLoadingCourses, setIsLoadingCourses] = useState(false);
@@ -124,8 +122,7 @@ const CourseHistoryInput = ({
       code: "",
       name: "",
       category: "majorRequired",
-      credit: 3,
-      semester: new Date().getFullYear() + "-" + (new Date().getMonth() < 6 ? "1" : "2"),
+      credit: 3
     });
     setIsAdding(false);
   };
@@ -187,6 +184,7 @@ const CourseHistoryInput = ({
   };
 
   const selectCourseFromDb = (course: DbCourse) => {
+    // 중복 확인은 onAddCourse 내부에서 처리됨
     const mappedCategory = (): "majorRequired" | "majorElective" | "generalRequired" | "generalElective" => {
       switch (course.category) {
         case "전공필수":
@@ -207,15 +205,10 @@ const CourseHistoryInput = ({
       code: course.course_code,
       name: course.course_name,
       category: mappedCategory(),
-      credit: course.credit,
-      semester: new Date().getFullYear() + "-" + (new Date().getMonth() < 6 ? "1" : "2"),
+      credit: course.credit
     };
 
     onAddCourse(mappedCourse);
-    toast({
-      title: "과목 추가",
-      description: `${course.course_name} 과목이 추가되었습니다.`,
-    });
   };
   
   return (
@@ -455,17 +448,6 @@ const CourseHistoryInput = ({
                   <option value="4">4학점</option>
                 </select>
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">이수 학기</label>
-                <input
-                  type="text"
-                  name="semester"
-                  value={newCourse.semester}
-                  onChange={handleInputChange}
-                  className="w-full p-2 border rounded-md"
-                  placeholder="2023-1"
-                />
-              </div>
             </div>
             <div className="flex justify-end space-x-2">
               <Button variant="outline" onClick={() => setIsAdding(false)}>
@@ -492,7 +474,6 @@ const CourseHistoryInput = ({
                   <TableHead>과목명</TableHead>
                   <TableHead>카테고리</TableHead>
                   <TableHead>학점</TableHead>
-                  <TableHead>학기</TableHead>
                   <TableHead className="text-right">관리</TableHead>
                 </TableRow>
               </TableHeader>
@@ -508,7 +489,6 @@ const CourseHistoryInput = ({
                       {course.category === "generalElective" && "교양선택"}
                     </TableCell>
                     <TableCell>{course.credit}학점</TableCell>
-                    <TableCell>{course.semester}</TableCell>
                     <TableCell className="text-right">
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
@@ -538,8 +518,8 @@ const CourseHistoryInput = ({
                 ))}
                 {courses.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                      아직 등록된 과목이 없습니��. 과목을 추가해주세요.
+                    <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                      아직 등록된 과목이 없습니다. 과목을 추가해주세요.
                     </TableCell>
                   </TableRow>
                 )}
