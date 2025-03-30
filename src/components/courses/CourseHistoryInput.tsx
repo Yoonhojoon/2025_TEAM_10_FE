@@ -5,12 +5,13 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTr
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Edit, PlusCircle, Trash2, Calendar, Loader2 } from "lucide-react";
+import { Edit, PlusCircle, Trash2, Calendar, Loader2, AlertCircle } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface Course {
   id: string;
@@ -57,6 +58,7 @@ const CourseHistoryInput = ({
   const [dbCourses, setDbCourses] = useState<DbCourse[]>([]);
   const [isLoadingCourses, setIsLoadingCourses] = useState(false);
   const [userDepartmentId, setUserDepartmentId] = useState<string | null>(null);
+  const [departmentError, setDepartmentError] = useState<string | null>(null);
   
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -67,20 +69,27 @@ const CourseHistoryInput = ({
     const fetchUserDepartment = async () => {
       if (!user) return;
       
+      setDepartmentError(null);
+      
       try {
         const { data, error } = await supabase
           .from('users')
           .select('department_id')
           .eq('user_id', user.id)
-          .single();
+          .maybeSingle(); // Using maybeSingle instead of single to handle case where user might not have a department yet
         
         if (error) throw error;
         
         if (data) {
           setUserDepartmentId(data.department_id);
+          console.log("Found user department ID:", data.department_id);
+        } else {
+          console.log("No department found for user:", user.id);
+          setDepartmentError("사용자의 학과 정보를 찾을 수 없습니다. 프로필 설정을 완료해주세요.");
         }
       } catch (error) {
         console.error('Error fetching user department:', error);
+        setDepartmentError("학과 정보를 불러오는 데 문제가 발생했습니다.");
       }
     };
     
@@ -117,22 +126,25 @@ const CourseHistoryInput = ({
   };
 
   const fetchCourses = async (tabValue: string) => {
-    if (!userDepartmentId) return;
-    
+    setDbCourses([]);
     setIsLoadingCourses(true);
     
     try {
       let query = supabase.from('courses').select('*');
       
-      // Filter major courses by department_id
-      if (tabValue === "major-required") {
+      // Filter major courses by department_id only if we have a department ID
+      if (tabValue === "major-required" && userDepartmentId) {
         query = query
           .eq('department_id', userDepartmentId)
           .in('category', ['전공필수', '전공기초']);
-      } else if (tabValue === "major-elective") {
+          
+        console.log("Fetching major required courses for department:", userDepartmentId);
+      } else if (tabValue === "major-elective" && userDepartmentId) {
         query = query
           .eq('department_id', userDepartmentId)
           .eq('category', '전공선택');
+          
+        console.log("Fetching major elective courses for department:", userDepartmentId);
       } else if (tabValue === "general-required") {
         query = query.eq('category', '배분이수교과');
       } else if (tabValue === "general-elective") {
@@ -145,7 +157,10 @@ const CourseHistoryInput = ({
         throw error;
       }
       
-      setDbCourses(data || []);
+      if (data) {
+        console.log(`Fetched ${data.length} courses for ${tabValue}`);
+        setDbCourses(data);
+      }
     } catch (error) {
       console.error('Error fetching courses:', error);
       toast({
@@ -221,6 +236,13 @@ const CourseHistoryInput = ({
                 </SheetDescription>
               </SheetHeader>
               
+              {departmentError && (
+                <Alert variant="destructive" className="mt-4">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{departmentError}</AlertDescription>
+                </Alert>
+              )}
+              
               <div className="py-4">
                 <Tabs defaultValue="major-required" className="w-full">
                   <TabsList className="grid grid-cols-4 mb-4">
@@ -251,14 +273,18 @@ const CourseHistoryInput = ({
                           </div>
                         ))}
                       </div>
-                    ) : (
+                    ) : userDepartmentId ? (
                       <div className="py-8 text-center text-muted-foreground">
                         등록된 전공필수 과목이 없습니다.
+                      </div>
+                    ) : (
+                      <div className="py-8 text-center text-muted-foreground">
+                        학과 정보가 필요합니다. 프로필 설정을 완료해주세요.
                       </div>
                     )}
                   </TabsContent>
                   
-                  {/* The other tab content sections follow the same pattern, just with different values */}
+                  {/* Major Elective Tab */}
                   <TabsContent value="major-elective" className="mt-0">
                     {isLoadingCourses ? (
                       <div className="py-8 text-center text-muted-foreground">
@@ -280,13 +306,18 @@ const CourseHistoryInput = ({
                           </div>
                         ))}
                       </div>
-                    ) : (
+                    ) : userDepartmentId ? (
                       <div className="py-8 text-center text-muted-foreground">
                         등록된 전공선택 과목이 없습니다.
+                      </div>
+                    ) : (
+                      <div className="py-8 text-center text-muted-foreground">
+                        학과 정보가 필요합니다. 프로필 설정을 완료해주세요.
                       </div>
                     )}
                   </TabsContent>
                   
+                  {/* General Required Tab */}
                   <TabsContent value="general-required" className="mt-0">
                     {isLoadingCourses ? (
                       <div className="py-8 text-center text-muted-foreground">
@@ -315,6 +346,7 @@ const CourseHistoryInput = ({
                     )}
                   </TabsContent>
                   
+                  {/* General Elective Tab */}
                   <TabsContent value="general-elective" className="mt-0">
                     {isLoadingCourses ? (
                       <div className="py-8 text-center text-muted-foreground">

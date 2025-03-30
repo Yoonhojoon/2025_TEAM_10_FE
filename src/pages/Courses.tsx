@@ -48,6 +48,8 @@ const Courses = () => {
         if (enrollmentsError) throw enrollmentsError;
         
         if (enrollmentsData && enrollmentsData.length > 0) {
+          console.log("Fetched enrollments:", enrollmentsData);
+          
           // Map the joined data to our Course interface
           const formattedCourses = enrollmentsData.map(enrollment => {
             const courseDetails = enrollment.courses;
@@ -72,6 +74,8 @@ const Courses = () => {
           });
           
           setCourses(formattedCourses);
+        } else {
+          console.log("No enrollments found for user:", user.id);
         }
       } catch (error) {
         console.error("Error fetching user enrollments:", error);
