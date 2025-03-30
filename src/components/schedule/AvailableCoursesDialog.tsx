@@ -1,13 +1,17 @@
 
 import React, { useState, useEffect } from "react";
-import { AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription } from "@/components/ui/alert-dialog";
+import { AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogCancel } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Filter, Plus } from "lucide-react";
+import { Search, Filter, Plus, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useToast } from "@/hooks/use-toast";
 import { parseScheduleTime } from "@/hooks/useSchedule";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Label } from "@/components/ui/label";
 
 interface AvailableCourse {
   course_id: string;
@@ -21,13 +25,15 @@ interface AvailableCourse {
 
 interface AvailableCoursesDialogProps {
   onAddCourse: (course: any) => void;
+  onClose?: () => void;
 }
 
-const AvailableCoursesDialog: React.FC<AvailableCoursesDialogProps> = ({ onAddCourse }) => {
+const AvailableCoursesDialog: React.FC<AvailableCoursesDialogProps> = ({ onAddCourse, onClose }) => {
   const [availableCourses, setAvailableCourses] = useState<AvailableCourse[]>([]);
   const [filteredCourses, setFilteredCourses] = useState<AvailableCourse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState<string>("");
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -77,17 +83,28 @@ const AvailableCoursesDialog: React.FC<AvailableCoursesDialogProps> = ({ onAddCo
   }, [user, toast]);
   
   useEffect(() => {
-    if (searchTerm.trim() === "") {
-      setFilteredCourses(availableCourses);
-    } else {
+    filterCourses();
+  }, [searchTerm, categoryFilter, availableCourses]);
+  
+  const filterCourses = () => {
+    let filtered = [...availableCourses];
+    
+    // Apply search filter
+    if (searchTerm.trim() !== "") {
       const lowerSearchTerm = searchTerm.toLowerCase();
-      const filtered = availableCourses.filter(course => 
+      filtered = filtered.filter(course => 
         course.course_name.toLowerCase().includes(lowerSearchTerm) || 
         course.course_code.toLowerCase().includes(lowerSearchTerm)
       );
-      setFilteredCourses(filtered);
     }
-  }, [searchTerm, availableCourses]);
+    
+    // Apply category filter
+    if (categoryFilter) {
+      filtered = filtered.filter(course => course.category === categoryFilter);
+    }
+    
+    setFilteredCourses(filtered);
+  };
   
   const handleAddCourse = (course: AvailableCourse) => {
     const timeSlots = parseScheduleTime(course.schedule_time);
@@ -133,28 +150,58 @@ const AvailableCoursesDialog: React.FC<AvailableCoursesDialogProps> = ({ onAddCo
       case "전공기초": return "전공 기초";
       case "전공선택": return "전공 선택";
       case "배분이수교과": return "배분 이수";
+      case "자유이수교과": return "자유 이수";
       default: return "일반 선택";
     }
   };
+
+  const categoryOptions = [
+    { value: "", label: "전체 카테고리" },
+    { value: "전공필수", label: "전공 필수" },
+    { value: "전공기초", label: "전공 기초" },
+    { value: "전공선택", label: "전공 선택" },
+    { value: "배분이수교과", label: "배분 이수" },
+    { value: "자유이수교과", label: "자유 이수" }
+  ];
   
   return (
     <AlertDialogContent className="max-w-3xl max-h-[90vh] overflow-auto">
-      <AlertDialogHeader>
-        <AlertDialogTitle>수강 가능한 과목 목록</AlertDialogTitle>
-        <AlertDialogDescription>
-          아직 수강하지 않은 과목을 시간표에 추가합니다.
-        </AlertDialogDescription>
+      <AlertDialogHeader className="flex flex-row items-center justify-between">
+        <div>
+          <AlertDialogTitle>수강 가능한 과목 목록</AlertDialogTitle>
+          <AlertDialogDescription>
+            아직 수강하지 않은 과목을 시간표에 추가합니다.
+          </AlertDialogDescription>
+        </div>
+        <AlertDialogCancel className="h-9 w-9 p-0">
+          <X className="h-4 w-4" />
+        </AlertDialogCancel>
       </AlertDialogHeader>
       
       <div className="mt-4">
-        <div className="flex items-center mb-4">
-          <Search className="w-4 h-4 mr-2 text-muted-foreground" />
-          <Input
-            placeholder="과목명 또는 학수번호로 검색"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="flex-grow"
-          />
+        <div className="flex items-center gap-2 mb-4">
+          <div className="flex items-center flex-1">
+            <Search className="w-4 h-4 mr-2 text-muted-foreground" />
+            <Input
+              placeholder="과목명 또는 학수번호로 검색"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="flex-grow"
+            />
+          </div>
+          
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="카테고리 선택" />
+            </SelectTrigger>
+            <SelectContent>
+              {categoryOptions.map(option => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         
         {isLoading ? (

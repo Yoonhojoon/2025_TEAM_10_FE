@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useMemo } from "react";
 import { useSchedule } from "@/hooks/useSchedule";
 import Footer from "@/components/layout/Footer";
 import Header from "@/components/layout/Header";
@@ -49,11 +49,56 @@ const Schedule = () => {
     }))
   };
 
-  const totalCredits = courses.reduce((total, course) => total + course.credit, 0);
+  // Consolidate courses with the same code into a single entry
+  const consolidatedCourses = useMemo(() => {
+    const courseMap = new Map();
+    
+    courses.forEach(course => {
+      if (courseMap.has(course.code)) {
+        // Course already exists in the map
+        const existingCourse = courseMap.get(course.code);
+        // Add the day and time to the existing course
+        existingCourse.scheduleTimes.push({
+          id: course.id,
+          day: course.day,
+          startTime: course.startTime,
+          endTime: course.endTime
+        });
+      } else {
+        // New course, add to map
+        courseMap.set(course.code, {
+          ...course,
+          scheduleTimes: [{
+            id: course.id,
+            day: course.day,
+            startTime: course.startTime,
+            endTime: course.endTime
+          }]
+        });
+      }
+    });
+    
+    // Return the values from the map
+    return Array.from(courseMap.values());
+  }, [courses]);
+
+  const totalCredits = courses.reduce((total, course) => {
+    // Only count each course credit once based on the code
+    const courseCodes = new Set();
+    if (!courseCodes.has(course.code)) {
+      courseCodes.add(course.code);
+      return total + course.credit;
+    }
+    return total;
+  }, 0);
   
   const handleApplyAndShowSaved = (schedule: any) => {
     applySchedule(schedule);
     setIsScheduleDialogOpen(false);
+  };
+
+  const handleCloseAvailableCoursesDialog = () => {
+    // The dialog is automatically closed when using the AlertDialog component
   };
   
   return (
@@ -76,7 +121,7 @@ const Schedule = () => {
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <div>
                   <CardTitle>2024년 1학기 시간표</CardTitle>
-                  <CardDescription>총 {totalCredits}학점</CardDescription>
+                  <CardDescription>총 {consolidatedCourses.length}과목 {totalCredits}학점</CardDescription>
                 </div>
                 <div className="flex gap-3">
                   <GraduationRequirementsModal>
@@ -93,7 +138,10 @@ const Schedule = () => {
                         수강 가능한 과목 추가
                       </Button>
                     </AlertDialogTrigger>
-                    <AvailableCoursesDialog onAddCourse={handleAddCourse} />
+                    <AvailableCoursesDialog 
+                      onAddCourse={handleAddCourse}
+                      onClose={handleCloseAvailableCoursesDialog}
+                    />
                   </AlertDialog>
                 </div>
               </CardHeader>
@@ -105,9 +153,9 @@ const Schedule = () => {
                 <div className="mt-6">
                   <h4 className="font-medium mb-2">등록된 과목 목록</h4>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    {courses.map(course => (
+                    {consolidatedCourses.map(course => (
                       <div 
-                        key={course.id} 
+                        key={course.code} 
                         className="p-3 rounded-lg border"
                         style={{ 
                           borderLeftColor: getCourseColor(course.code), 
@@ -117,20 +165,22 @@ const Schedule = () => {
                       >
                         <div className="font-medium">{course.name}</div>
                         <div className="text-sm text-muted-foreground mt-1">
-                          {getDayLabel(course.day)} {course.startTime}-{course.endTime}
+                          {course.scheduleTimes.map((time, idx) => (
+                            <div key={time.id} className="flex justify-between">
+                              <span>{getDayLabel(time.day)} {time.startTime}-{time.endTime}</span>
+                              <button
+                                onClick={() => handleDeleteCourse(time.id)}
+                                className="text-red-500 hover:text-red-700 transition-colors"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          ))}
                         </div>
-                        <div className="flex justify-between items-center mt-2">
-                          <span className="text-sm">{course.credit}학점</span>
-                          <button
-                            onClick={() => handleDeleteCourse(course.id)}
-                            className="text-red-500 hover:text-red-700 transition-colors"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
+                        <div className="mt-2 text-sm">{course.credit}학점</div>
                       </div>
                     ))}
-                    {courses.length === 0 && (
+                    {consolidatedCourses.length === 0 && (
                       <div className="md:col-span-3 p-6 text-center text-muted-foreground border rounded-lg">
                         아직 등록된 과목이 없습니다. '다른 계획 보기' 또는 '시간표 생성하기'를 이용해보세요.
                       </div>
