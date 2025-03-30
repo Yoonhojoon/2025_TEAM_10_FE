@@ -184,6 +184,33 @@ serve(async (req) => {
             });
           }
         });
+        
+        // Now save each schedule to the schedules table
+        const savePromises = schedulesData.schedules.map(async (schedule) => {
+          // Extract tags from the schedule
+          const tags = schedule.태그 || [];
+          
+          // Create schedule data for DB
+          const scheduleData = {
+            user_id: userId,
+            schedule_json: schedule,
+            description_tags: tags
+          };
+          
+          // Insert the schedule into the database
+          const { data, error } = await supabaseClient
+            .from('schedules')
+            .insert(scheduleData);
+            
+          if (error) {
+            console.error('Error saving schedule to database:', error);
+          }
+          
+          return { data, error };
+        });
+        
+        // Wait for all save operations to complete
+        await Promise.all(savePromises);
       }
       
       return new Response(

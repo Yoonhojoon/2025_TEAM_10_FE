@@ -1,7 +1,8 @@
+
 import React, { useState } from "react";
 import { Button } from "@/components/common/Button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/common/Card";
-import { AlertCircle, Clock, Copy, Save, Trash2 } from "lucide-react";
+import { AlertCircle, Clock, Eye, Save, Trash2 } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 
@@ -211,9 +212,9 @@ const SchedulePlanner = ({
           <Button 
             size="sm" 
             variant="outline"
-            icon={<Copy size={16} />}
+            icon={<Eye size={16} />}
           >
-            다른 계획 생성
+            다른 계획 보기
           </Button>
           <Button 
             size="sm"

@@ -375,7 +375,7 @@ const Schedule = () => {
           <DialogHeader>
             <DialogTitle>추천 시간표</DialogTitle>
             <DialogDescription>
-              AI가 생성한 추천 시간표입니다. 적용할 시간표를 선택하세요.
+              AI가 생성한 추천 시간표입니다. 확인하고 필요한 시간표를 선택하세요.
             </DialogDescription>
           </DialogHeader>
           
@@ -445,7 +445,7 @@ const Schedule = () => {
                   
                   <div className="flex justify-end">
                     <Button onClick={() => applySchedule(schedule)}>
-                      이 시간표 적용하기
+                      이 시간표 보기
                     </Button>
                   </div>
                 </div>
