@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/common/Button";
 import ProgressDashboard from "@/components/dashboard/ProgressDashboard";
 import Header from "@/components/layout/Header";
@@ -136,7 +137,8 @@ const Dashboard = () => {
           required_basic_general: 10
         } : {
           ...requirementData,
-          required_industry: requirementData.required_industry || 12 // Default if missing
+          // Fix: Explicitly add required_industry with a default value if it doesn't exist
+          required_industry: requirementData.required_industry !== undefined ? requirementData.required_industry : 12
         };
 
         console.log("Graduation requirements:", requirements);
