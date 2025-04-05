@@ -13,7 +13,7 @@ import { AlertDialog, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import AvailableCoursesDialog from "@/components/schedule/AvailableCoursesDialog";
 import SaveScheduleDialog from "@/components/schedule/SaveScheduleDialog";
 import ShareScheduleDialog from "@/components/schedule/ShareScheduleDialog";
-import { GraduationCap, BookPlus, Save, Share, Eye, Bug } from "lucide-react";
+import { GraduationCap, BookPlus, Save, Share, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import GraduationRequirementsModal from "@/components/dashboard/GraduationRequirementsModal";
 import { TimeConflict, CourseCategory } from "@/types/schedule";
@@ -160,106 +160,6 @@ const Schedule = () => {
     return result;
   };
 
-  const handleDebugScheduleData = async () => {
-    if (!user) return;
-    
-    try {
-      // Get taken courses
-      const { data: enrollments, error: enrollmentsError } = await supabase
-        .from('enrollments')
-        .select('course_id')
-        .eq('user_id', user.id);
-        
-      if (enrollmentsError) throw new Error(enrollmentsError.message);
-      
-      const takenCourseIds = enrollments?.map(e => e.course_id) || [];
-      
-      // Get course details
-      const { data: courses, error: coursesError } = await supabase
-        .from('courses')
-        .select('course_id, course_name, course_code, category, department_id')
-        .in('course_id', takenCourseIds);
-        
-      if (coursesError) throw new Error(coursesError.message);
-      
-      // Get user department
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('department_id')
-        .eq('user_id', user.id)
-        .single();
-        
-      if (userError) throw new Error(userError.message);
-      
-      // Get department name
-      const { data: deptData, error: deptError } = await supabase
-        .from('departments')
-        .select('department_id, department_name')
-        .eq('department_id', userData.department_id)
-        .single();
-        
-      if (deptError) throw new Error(deptError.message);
-      
-      // Get IDs of the courses displayed in the current schedule
-      const currentCourseIds = courses?.map(course => {
-        // Extract course_id if it's from DB
-        if (course.course_id) {
-          return course.course_id;
-        } 
-        return null;
-      }).filter(id => id !== null) as string[];
-      
-      // Create a more readable debug object
-      const debugData = {
-        userId: user.id,
-        userDepartment: {
-          id: deptData?.department_id || "",
-          name: deptData?.department_name || ""
-        },
-        takenCourses: {
-          count: courses?.length || 0,
-          ids: takenCourseIds,
-          details: courses?.map(c => ({
-            id: c.course_id,
-            name: c.course_name,
-            code: c.course_code,
-            category: c.category,
-          }))
-        },
-        enrolledCourseIds,
-        selectedCategories,
-        currentScheduleCourses: {
-          count: courses ? courses.length : 0,
-          ids: currentCourseIds
-        }
-      };
-      
-      console.log("Debug information for schedule generation:", debugData);
-      
-      toast({
-        title: "디버깅 정보",
-        description: `수강 내역: ${courses?.length || 0}과목, 현재 수강중: ${enrolledCourseIds.length}과목, 선택 카테고리: ${selectedCategories.join(', ')}`,
-      });
-      
-      // Alert with key information
-      alert(
-        `디버깅 정보:\n` +
-        `- 사용자 학과: ${deptData?.department_name || "미확인"}\n` +
-        `- 수강 완료된 과목 수: ${takenCourseIds.length}\n` +
-        `- 현재 수강 중인 과목 수: ${enrolledCourseIds.length}\n` +
-        `- 시간표 생성에 사용할 카테고리: ${selectedCategories.join(', ')}\n\n` +
-        `이 정보가 Edge Function에 전달되며, 시간표 생성 시 이미 수강한 과목과 현재 수강 중인 과목을 제외한 나머지 과목 중에서 선택됩니다.`
-      );
-    } catch (error) {
-      console.error("Error fetching debug data:", error);
-      toast({
-        title: "디버깅 정보 조회 실패",
-        description: error instanceof Error ? error.message : "정보를 불러오는 데 실패했습니다.",
-        variant: "destructive"
-      });
-    }
-  };
-
   return (
     <div className="flex flex-col min-h-screen">
       <Header />
@@ -317,16 +217,6 @@ const Schedule = () => {
                     >
                       <Save size={16} />
                       시간표 저장
-                    </Button>
-                    
-                    <Button
-                      onClick={handleDebugScheduleData}
-                      variant="outline"
-                      size="sm"
-                      className="flex gap-2"
-                    >
-                      <Bug size={16} />
-                      시간표 디버깅
                     </Button>
                     
                     <GraduationRequirementsModal>
