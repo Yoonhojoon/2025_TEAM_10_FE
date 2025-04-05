@@ -100,6 +100,7 @@ export type Database = {
           required_basic_general: number
           required_distribution: number
           required_free: number
+          required_industry: number
           required_major_basic: number
           required_major_elective: number
           required_major_required: number
@@ -111,6 +112,7 @@ export type Database = {
           required_basic_general?: number
           required_distribution?: number
           required_free?: number
+          required_industry?: number
           required_major_basic?: number
           required_major_elective?: number
           required_major_required?: number
@@ -122,6 +124,7 @@ export type Database = {
           required_basic_general?: number
           required_distribution?: number
           required_free?: number
+          required_industry?: number
           required_major_basic?: number
           required_major_elective?: number
           required_major_required?: number

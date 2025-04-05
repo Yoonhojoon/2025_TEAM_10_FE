@@ -23,6 +23,20 @@ interface ProgressData {
   requiredGeneralCredits: number;
   basicGeneralCredits: number; // 추가: 기초교양 이수 학점
   requiredBasicGeneralCredits: number; // 추가: 기초교양 필수 학점
+
+  // 각 카테고리별 실제 이수 학점 및 필요 학점 추가
+  majorRequiredCredits: number; // 전공필수 이수 학점
+  requiredMajorRequiredCredits: number; // 전공필수 필요 학점
+  majorElectiveCredits: number; // 전공선택 이수 학점
+  requiredMajorElectiveCredits: number; // 전공선택 필요 학점
+  majorBasicCredits: number; // 전공기초 이수 학점
+  requiredMajorBasicCredits: number; // 전공기초 필요 학점
+  generalRequiredCredits: number; // 배분이수 이수 학점
+  requiredGeneralRequiredCredits: number; // 배분이수 필요 학점
+  generalElectiveCredits: number; // 자유이수 이수 학점
+  requiredGeneralElectiveCredits: number; // 자유이수 필요 학점
+  industryRequiredCredits: number; // 산학필수 이수 학점
+  requiredIndustryCredits: number; // 산학필수 필요 학점
 }
 
 // 카테고리 매핑 정보
@@ -37,7 +51,7 @@ const categoryMapping: CategoryMap = {
   generalRequired: "배분이수교과",
   generalElective: "자유이수교과",
   industryRequired: "산학필수",
-  basicGeneral: "기초교과" // 추가: 기초교양
+  basicGeneral: "기초교과"
 };
 
 const ProgressDashboard = ({ data }: { data: ProgressData }) => {
@@ -53,15 +67,6 @@ const ProgressDashboard = ({ data }: { data: ProgressData }) => {
     setModalOpen(true);
   };
   
-  // 각 카테고리별 이수 학점 (실제 학점)
-  const majorRequiredCredits = Math.round(data.requiredMajorCredits * (data.majorRequired / 100));
-  const majorElectiveCredits = Math.round(data.requiredMajorCredits * (data.majorElective / 100));
-  const majorBasicCredits = Math.round(data.requiredMajorCredits * (data.majorBasic / 100));
-  const generalRequiredCredits = Math.round(data.requiredGeneralCredits * (data.generalRequired / 100));
-  const generalElectiveCredits = Math.round(data.requiredGeneralCredits * (data.generalElective / 100));
-  const industryRequiredCredits = Math.round(data.requiredMajorCredits * (data.industryRequired / 100));
-  const basicGeneralCredits = data.basicGeneralCredits;
-
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -153,7 +158,7 @@ const ProgressDashboard = ({ data }: { data: ProgressData }) => {
                   variant={data.majorRequired >= 100 ? "success" : "default"}
                 />
                 <div className="text-sm text-muted-foreground text-right mt-1">
-                  {majorRequiredCredits} / {data.requiredMajorCredits * 0.45} 학점
+                  {data.majorRequiredCredits} / {data.requiredMajorRequiredCredits} 학점
                 </div>
               </div>
               
@@ -171,7 +176,7 @@ const ProgressDashboard = ({ data }: { data: ProgressData }) => {
                   variant={data.majorElective >= 100 ? "success" : "default"}
                 />
                 <div className="text-sm text-muted-foreground text-right mt-1">
-                  {majorElectiveCredits} / {data.requiredMajorCredits * 0.55} 학점
+                  {data.majorElectiveCredits} / {data.requiredMajorElectiveCredits} 학점
                 </div>
               </div>
               
@@ -189,7 +194,7 @@ const ProgressDashboard = ({ data }: { data: ProgressData }) => {
                   variant={data.majorBasic >= 100 ? "success" : "default"}
                 />
                 <div className="text-sm text-muted-foreground text-right mt-1">
-                  {majorBasicCredits} / {data.requiredMajorCredits * 0.2} 학점
+                  {data.majorBasicCredits} / {data.requiredMajorBasicCredits} 학점
                 </div>
               </div>
               
@@ -207,7 +212,7 @@ const ProgressDashboard = ({ data }: { data: ProgressData }) => {
                   variant={data.industryRequired >= 100 ? "success" : "warning"}
                 />
                 <div className="text-sm text-muted-foreground text-right mt-1">
-                  {industryRequiredCredits} / {data.requiredMajorCredits * 0.15} 학점
+                  {data.industryRequiredCredits} / {data.requiredIndustryCredits} 학점
                 </div>
               </div>
               
@@ -225,7 +230,7 @@ const ProgressDashboard = ({ data }: { data: ProgressData }) => {
                   variant={data.generalRequired >= 100 ? "success" : "warning"}
                 />
                 <div className="text-sm text-muted-foreground text-right mt-1">
-                  {generalRequiredCredits} / {data.requiredGeneralCredits * 0.7} 학점
+                  {data.generalRequiredCredits} / {data.requiredGeneralRequiredCredits} 학점
                 </div>
               </div>
               
@@ -243,7 +248,7 @@ const ProgressDashboard = ({ data }: { data: ProgressData }) => {
                   variant={data.generalElective >= 100 ? "success" : "default"}
                 />
                 <div className="text-sm text-muted-foreground text-right mt-1">
-                  {generalElectiveCredits} / {data.requiredGeneralCredits * 0.3} 학점
+                  {data.generalElectiveCredits} / {data.requiredGeneralElectiveCredits} 학점
                 </div>
               </div>
               
@@ -261,7 +266,7 @@ const ProgressDashboard = ({ data }: { data: ProgressData }) => {
                   variant={data.basicGeneral >= 100 ? "success" : "default"}
                 />
                 <div className="text-sm text-muted-foreground text-right mt-1">
-                  {basicGeneralCredits} / {data.requiredBasicGeneralCredits} 학점
+                  {data.basicGeneralCredits} / {data.requiredBasicGeneralCredits} 학점
                 </div>
               </div>
             </div>

@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/common/Button";
 import ProgressDashboard from "@/components/dashboard/ProgressDashboard";
 import Header from "@/components/layout/Header";
@@ -29,6 +28,20 @@ interface ProgressData {
   requiredGeneralCredits: number;
   basicGeneralCredits: number; // 추가: 기초교양 이수 학점
   requiredBasicGeneralCredits: number; // 추가: 기초교양 필수 학점
+
+  // 각 카테고리별 실제 이수 학점 및 필요 학점 추가
+  majorRequiredCredits: number; // 전공필수 이수 학점
+  requiredMajorRequiredCredits: number; // 전공필수 필요 학점
+  majorElectiveCredits: number; // 전공선택 이수 학점
+  requiredMajorElectiveCredits: number; // 전공선택 필요 학점
+  majorBasicCredits: number; // 전공기초 이수 학점
+  requiredMajorBasicCredits: number; // 전공기초 필요 학점
+  generalRequiredCredits: number; // 배분이수 이수 학점
+  requiredGeneralRequiredCredits: number; // 배분이수 필요 학점
+  generalElectiveCredits: number; // 자유이수 이수 학점
+  requiredGeneralElectiveCredits: number; // 자유이수 필요 학점
+  industryRequiredCredits: number; // 산학필수 이수 학점
+  requiredIndustryCredits: number; // 산학필수 필요 학점
 }
 
 const Dashboard = () => {
@@ -50,7 +63,19 @@ const Dashboard = () => {
     generalCredits: 0,
     requiredGeneralCredits: 0,
     basicGeneralCredits: 0, // 추가: 기초교양 이수 학점
-    requiredBasicGeneralCredits: 0 // 추가: 기초교양 필수 학점
+    requiredBasicGeneralCredits: 0, // 추가: 기초교양 필수 학점
+    majorRequiredCredits: 0,
+    requiredMajorRequiredCredits: 0,
+    majorElectiveCredits: 0,
+    requiredMajorElectiveCredits: 0,
+    majorBasicCredits: 0,
+    requiredMajorBasicCredits: 0,
+    generalRequiredCredits: 0,
+    requiredGeneralRequiredCredits: 0,
+    generalElectiveCredits: 0,
+    requiredGeneralElectiveCredits: 0,
+    industryRequiredCredits: 0,
+    requiredIndustryCredits: 0
   });
   const [isLoading, setIsLoading] = useState(true);
 
@@ -107,8 +132,12 @@ const Dashboard = () => {
           required_major_basic: 18,
           required_distribution: 30,
           required_free: 34,
+          required_industry: 12,
           required_basic_general: 10
-        } : requirementData;
+        } : {
+          ...requirementData,
+          required_industry: requirementData.required_industry || 12 // Default if missing
+        };
 
         console.log("Graduation requirements:", requirements);
           
@@ -139,7 +168,19 @@ const Dashboard = () => {
           generalCredits: 30,
           requiredGeneralCredits: 40,
           basicGeneralCredits: 7,
-          requiredBasicGeneralCredits: 10
+          requiredBasicGeneralCredits: 10,
+          majorRequiredCredits: 24,
+          requiredMajorRequiredCredits: 30,
+          majorElectiveCredits: 12,
+          requiredMajorElectiveCredits: 18,
+          majorBasicCredits: 12,
+          requiredMajorBasicCredits: 18,
+          generalRequiredCredits: 20,
+          requiredGeneralRequiredCredits: 30,
+          generalElectiveCredits: 10,
+          requiredGeneralElectiveCredits: 34,
+          industryRequiredCredits: 6,
+          requiredIndustryCredits: 12
         });
       } finally {
         setIsLoading(false);
@@ -220,31 +261,31 @@ const Dashboard = () => {
         const majorCredits = majorRequiredCredits + majorElectiveCredits + majorBasicCredits + industryRequiredCredits;
         const generalCredits = distributionCredits + freeCredits;
         
-        // 전체 필수 학점 계산 (요건 테이블에서 가져오기)
-        const requiredMajorCredits = requirements.required_major_required + 
-                                   requirements.required_major_elective + 
-                                   requirements.required_major_basic;
-        
-        const requiredGeneralCredits = requirements.required_distribution + 
-                                      requirements.required_free;
-        
+        // 각 카테고리별 필수 학점
+        const requiredMajorRequiredCredits = requirements.required_major_required || 30;
+        const requiredMajorElectiveCredits = requirements.required_major_elective || 18;
+        const requiredMajorBasicCredits = requirements.required_major_basic || 18;
+        const requiredGeneralRequiredCredits = requirements.required_distribution || 30;
+        const requiredGeneralElectiveCredits = requirements.required_free || 34;
+        const requiredIndustryCredits = requirements.required_industry || 12;
         const requiredBasicGeneralCredits = requirements.required_basic_general || 10;
         
-        // 진행률 계산 (실제 값 사용)
-        const requiredMajorRequired = requirements.required_major_required || 30;
-        const requiredMajorElective = requirements.required_major_elective || 18;
-        const requiredMajorBasic = requirements.required_major_basic || 18;
-        const requiredDistribution = requirements.required_distribution || 30;
-        const requiredFree = requirements.required_free || 34;
-        const requiredIndustry = 12; // 산학필수 기본 12학점 (db에 없으면)
+        // 전체 필수 학점 계산
+        const requiredMajorCredits = requiredMajorRequiredCredits + 
+                                   requiredMajorElectiveCredits + 
+                                   requiredMajorBasicCredits;
         
-        const majorRequiredPercent = Math.min(Math.round((majorRequiredCredits / Math.max(requiredMajorRequired, 1)) * 100), 100);
-        const majorElectivePercent = Math.min(Math.round((majorElectiveCredits / Math.max(requiredMajorElective, 1)) * 100), 100);
-        const majorBasicPercent = Math.min(Math.round((majorBasicCredits / Math.max(requiredMajorBasic, 1)) * 100), 100);
-        const generalRequiredPercent = Math.min(Math.round((distributionCredits / Math.max(requiredDistribution, 1)) * 100), 100);
-        const generalElectivePercent = Math.min(Math.round((freeCredits / Math.max(requiredFree, 1)) * 100), 100);
-        const industryRequiredPercent = Math.min(Math.round((industryRequiredCredits / requiredIndustry) * 100), 100);
-        const basicGeneralPercent = Math.min(Math.round((basicGeneralCredits / requiredBasicGeneralCredits) * 100), 100);
+        const requiredGeneralCredits = requiredGeneralRequiredCredits + 
+                                      requiredGeneralElectiveCredits;
+        
+        // 진행률 계산
+        const majorRequiredPercent = Math.min(Math.round((majorRequiredCredits / Math.max(requiredMajorRequiredCredits, 1)) * 100), 100);
+        const majorElectivePercent = Math.min(Math.round((majorElectiveCredits / Math.max(requiredMajorElectiveCredits, 1)) * 100), 100);
+        const majorBasicPercent = Math.min(Math.round((majorBasicCredits / Math.max(requiredMajorBasicCredits, 1)) * 100), 100);
+        const generalRequiredPercent = Math.min(Math.round((distributionCredits / Math.max(requiredGeneralRequiredCredits, 1)) * 100), 100);
+        const generalElectivePercent = Math.min(Math.round((freeCredits / Math.max(requiredGeneralElectiveCredits, 1)) * 100), 100);
+        const industryRequiredPercent = Math.min(Math.round((industryRequiredCredits / Math.max(requiredIndustryCredits, 1)) * 100), 100);
+        const basicGeneralPercent = Math.min(Math.round((basicGeneralCredits / Math.max(requiredBasicGeneralCredits, 1)) * 100), 100);
         
         // 전체 진행률 계산
         const overall = Math.min(Math.round((totalCredits / requirements.required_total_credits) * 100), 100);
@@ -265,7 +306,20 @@ const Dashboard = () => {
           generalCredits,
           requiredGeneralCredits,
           basicGeneralCredits,
-          requiredBasicGeneralCredits
+          requiredBasicGeneralCredits,
+          // 각 카테고리별 이수 및 필수 학점 추가
+          majorRequiredCredits,
+          requiredMajorRequiredCredits,
+          majorElectiveCredits,
+          requiredMajorElectiveCredits,
+          majorBasicCredits,
+          requiredMajorBasicCredits,
+          generalRequiredCredits: distributionCredits,
+          requiredGeneralRequiredCredits,
+          generalElectiveCredits: freeCredits,
+          requiredGeneralElectiveCredits,
+          industryRequiredCredits,
+          requiredIndustryCredits
         });
       } catch (error) {
         console.error("Error calculating progress:", error);
