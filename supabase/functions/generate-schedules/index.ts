@@ -48,7 +48,10 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
-    const { userId, takenCourseIds, categories = ["전공필수", "전공선택", "전공기초"], courseOverlapCheckPriority = true, enrolledCourseIds = [] } = await req.json();
+    const requestBody = await req.json();
+    console.log("Full request body received by Edge Function:", JSON.stringify(requestBody, null, 2));
+    
+    const { userId, takenCourseIds, categories = ["전공필수", "전공선택", "전공기초"], courseOverlapCheckPriority = true, enrolledCourseIds = [] } = requestBody;
     
     if (!userId) {
       return new Response(
@@ -62,6 +65,18 @@ serve(async (req) => {
     console.log("Courses marked as taken (IDs):", takenCourseIds);
     console.log("Categories for course search:", categories);
     console.log("Currently enrolled course IDs:", enrolledCourseIds);
+    
+    // Get detailed info about taken courses
+    if (takenCourseIds && takenCourseIds.length > 0) {
+      const { data: takenCoursesDetails, error: takenCoursesError } = await supabase
+        .from('courses')
+        .select('course_id, course_name, course_code, category')
+        .in('course_id', takenCourseIds);
+        
+      if (!takenCoursesError && takenCoursesDetails) {
+        console.log("Detailed information about taken courses:", takenCoursesDetails);
+      }
+    }
     
     // Fetch user department
     const { data: userData, error: userError } = await supabase
@@ -127,6 +142,31 @@ serve(async (req) => {
       // Continue without prerequisites check if there's an error
     } else {
       console.log(`Found ${prerequisites.length} prerequisite relationships in total`);
+      
+      // Log detailed prerequisites information
+      if (prerequisites && prerequisites.length > 0) {
+        // Create a map of course IDs to course names to make logs more readable
+        const { data: allCourseNameMap, error: courseMapError } = await supabase
+          .from('courses')
+          .select('course_id, course_name, course_code')
+          .in('course_id', [...new Set([
+            ...prerequisites.map(p => p.course_id),
+            ...prerequisites.map(p => p.prerequisite_course_id)
+          ])]);
+          
+        const courseNameMap: Record<string, string> = {};
+        if (!courseMapError && allCourseNameMap) {
+          allCourseNameMap.forEach(c => {
+            courseNameMap[c.course_id] = `${c.course_name} (${c.course_code})`;
+          });
+        }
+        
+        // Log some sample prerequisite relationships
+        console.log("Sample prerequisite relationships:");
+        prerequisites.slice(0, 10).forEach(prereq => {
+          console.log(`Course ${courseNameMap[prereq.course_id] || prereq.course_id} requires ${courseNameMap[prereq.prerequisite_course_id] || prereq.prerequisite_course_id}`);
+        });
+      }
     }
     
     // Filter out courses that the user has already taken
@@ -153,8 +193,13 @@ serve(async (req) => {
         coursePrerequisites[prereq.course_id].push(prereq.prerequisite_course_id);
       });
       
-      // Filter courses based on prerequisites
+      // Get counts before filtering
       const coursesBeforePrereqFilter = filteredCourses.length;
+      
+      // Track filtered out courses for logging
+      const filteredOutCourses: Array<{course: Course, missingPrereqs: string[]}> = [];
+      
+      // Filter courses based on prerequisites
       filteredCourses = filteredCourses.filter(course => {
         const prereqs = coursePrerequisites[course.course_id];
         if (!prereqs || prereqs.length === 0) {
@@ -172,6 +217,12 @@ serve(async (req) => {
           const missingPrereqs = prereqs.filter(prereqId => 
             !takenCourseIds.includes(prereqId) && !enrolledCourseIds.includes(prereqId)
           );
+          
+          filteredOutCourses.push({
+            course,
+            missingPrereqs
+          });
+          
           console.log(`Course ${course.course_name} (${course.course_code}) filtered out due to missing prerequisites: ${missingPrereqs.length} missing`);
         }
         
@@ -179,6 +230,14 @@ serve(async (req) => {
       });
       
       console.log(`Prerequisite filter removed ${coursesBeforePrereqFilter - filteredCourses.length} courses`);
+      
+      // Detailed log of courses filtered out due to prerequisites
+      if (filteredOutCourses.length > 0) {
+        console.log("Courses filtered out due to prerequisite requirements:");
+        filteredOutCourses.slice(0, 10).forEach(({ course, missingPrereqs }) => {
+          console.log(`- ${course.course_name} (${course.course_code}) - Missing prerequisites: ${missingPrereqs.length}`);
+        });
+      }
     }
     
     // Log final course list
@@ -296,6 +355,15 @@ function timeToMinutes(timeStr: string): number {
 // Generate schedules using a simple algorithm that prioritizes avoiding time conflicts
 function generateSchedules(courses: Course[], prioritizeNoConflicts = true): Schedule[] {
   const schedules: Schedule[] = [];
+  
+  console.log(`Generating schedules from ${courses.length} available courses`);
+  
+  // Additional details about the course categories being used
+  const categoryDistribution: Record<string, number> = {};
+  courses.forEach(course => {
+    categoryDistribution[course.category] = (categoryDistribution[course.category] || 0) + 1;
+  });
+  console.log("Course category distribution:", categoryDistribution);
   
   // ALWAYS strictly check for time conflicts to ensure no overlaps
   

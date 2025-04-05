@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState, useEffect } from "react";
 import { useSchedule } from "@/hooks/useSchedule";
 import Footer from "@/components/layout/Footer";
@@ -13,7 +14,7 @@ import { AlertDialog, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import AvailableCoursesDialog from "@/components/schedule/AvailableCoursesDialog";
 import SaveScheduleDialog from "@/components/schedule/SaveScheduleDialog";
 import ShareScheduleDialog from "@/components/schedule/ShareScheduleDialog";
-import { GraduationCap, BookPlus, Save, Share, Eye } from "lucide-react";
+import { GraduationCap, BookPlus, Save, Share, Eye, Bug } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import GraduationRequirementsModal from "@/components/dashboard/GraduationRequirementsModal";
 import { TimeConflict } from "@/types/schedule";
@@ -21,6 +22,7 @@ import CategorySelectionModal from "@/components/schedule/CategorySelectionModal
 import { getSharedScheduleFromUrl } from "@/utils/shareScheduleUtils";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { supabase } from "@/integrations/supabase/client";
 
 const Schedule = () => {
   const {
@@ -35,6 +37,7 @@ const Schedule = () => {
     selectedSavedSchedule,
     isSavingSchedule,
     isDeletingSchedule,
+    enrolledCourseIds,
     setIsScheduleDialogOpen,
     setIsViewingSchedules,
     setSelectedSavedSchedule,
@@ -158,6 +161,75 @@ const Schedule = () => {
     return result;
   };
 
+  const handleDebugScheduleData = async () => {
+    if (!user) return;
+    
+    try {
+      // Get taken courses
+      const { data: enrollments, error: enrollmentsError } = await supabase
+        .from('enrollments')
+        .select('course_id')
+        .eq('user_id', user.id);
+        
+      if (enrollmentsError) throw new Error(enrollmentsError.message);
+      
+      const takenCourseIds = enrollments.map(e => e.course_id);
+      
+      // Get course details
+      const { data: courses, error: coursesError } = await supabase
+        .from('courses')
+        .select('course_id, course_name, course_code, category, department_id')
+        .in('course_id', takenCourseIds);
+        
+      if (coursesError) throw new Error(coursesError.message);
+      
+      // Get user department
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('department_id')
+        .eq('user_id', user.id)
+        .single();
+        
+      if (userError) throw new Error(userError.message);
+      
+      // Get department name
+      const { data: deptData, error: deptError } = await supabase
+        .from('departments')
+        .select('department_id, department_name')
+        .eq('department_id', userData.department_id)
+        .single();
+        
+      if (deptError) throw new Error(deptError.message);
+      
+      // Create a more readable debug object
+      const debugData = {
+        userId: user.id,
+        userDepartment: {
+          id: deptData.department_id,
+          name: deptData.department_name
+        },
+        takenCourses: courses.map(c => ({
+          id: c.course_id,
+          name: c.course_name,
+          code: c.course_code,
+          category: c.category,
+          departmentId: c.department_id
+        })),
+        enrolledCourseIds,
+        selectedCategories
+      };
+      
+      console.log("Debug information for schedule generation:", debugData);
+      
+      toast({
+        title: "디버깅 정보",
+        description: `수강 내역: ${courses.length}과목, 선택 카테고리: ${selectedCategories.join(', ')}`,
+      });
+    } catch (error) {
+      console.error("Error fetching debug data:", error);
+    }
+  };
+
   return (
     <div className="flex flex-col min-h-screen">
       <Header />
@@ -215,6 +287,16 @@ const Schedule = () => {
                     >
                       <Save size={16} />
                       시간표 저장
+                    </Button>
+                    
+                    <Button
+                      onClick={handleDebugScheduleData}
+                      variant="outline"
+                      size="sm"
+                      className="flex gap-2"
+                    >
+                      <Bug size={16} />
+                      시간표 디버깅
                     </Button>
                     
                     <GraduationRequirementsModal>

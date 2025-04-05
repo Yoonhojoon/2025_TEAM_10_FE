@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useToast } from "@/hooks/use-toast";
@@ -84,6 +83,15 @@ export const useSchedule = () => {
         const courseIds = data.map(item => item.course_id);
         setEnrolledCourseIds(courseIds);
         console.log('Fetched enrolled course IDs:', courseIds);
+        
+        const { data: coursesData, error: coursesError } = await supabase
+          .from('courses')
+          .select('course_id, course_name, course_code')
+          .in('course_id', courseIds);
+          
+        if (!coursesError && coursesData) {
+          console.log('User enrolled courses details:', coursesData);
+        }
       }
     } catch (error) {
       console.error('Error fetching enrolled courses:', error);
@@ -92,7 +100,6 @@ export const useSchedule = () => {
   
   const checkPrerequisites = async (courseCode: string) => {
     try {
-      // First get the course_id from the course code
       const { data: courseData, error: courseError } = await supabase
         .from('courses')
         .select('course_id')
@@ -104,7 +111,6 @@ export const useSchedule = () => {
         return { hasAllPrerequisites: true, missingPrerequisites: [] };
       }
       
-      // Now get the prerequisites for this course with proper column aliasing
       const { data: prerequisites, error: prereqError } = await supabase
         .from('prerequisites')
         .select(`
@@ -122,11 +128,9 @@ export const useSchedule = () => {
       }
       
       if (!prerequisites || prerequisites.length === 0) {
-        // No prerequisites for this course
         return { hasAllPrerequisites: true, missingPrerequisites: [] };
       }
       
-      // Check if the user has taken all prerequisites
       const missingPrerequisites = prerequisites.filter(
         prereq => !enrolledCourseIds.includes(prereq.prerequisite_course_id)
       ).map(prereq => prereq.prerequisite_courses);
@@ -257,22 +261,65 @@ export const useSchedule = () => {
       }
       
       const takenCourseIds = enrollments.map(enrollment => enrollment.course_id);
+      
+      const { data: takenCourses, error: takenCoursesError } = await supabase
+        .from('courses')
+        .select('course_id, course_name, course_code, category, credit')
+        .in('course_id', takenCourseIds);
+        
+      if (!takenCoursesError && takenCourses) {
+        console.log('Detailed information about taken courses:', takenCourses);
+      }
+      
+      const courseCategories = categories || ["전공필수", "전공선택", "전공기초"];
+      console.log("Selected course categories for generation:", courseCategories);
+      
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('department_id')
+        .eq('user_id', user.id)
+        .single();
+        
+      if (!userError && userData) {
+        console.log("User's department ID:", userData.department_id);
+        
+        const { data: availableCourses, error: availableCoursesError } = await supabase
+          .from('courses')
+          .select('course_id, course_name, course_code, category, credit')
+          .in('category', courseCategories)
+          .eq('department_id', userData.department_id);
+          
+        if (!availableCoursesError && availableCourses) {
+          console.log(`Total courses available in selected categories: ${availableCourses.length}`);
+          
+          const notTakenCourses = availableCourses.filter(
+            course => !takenCourseIds.includes(course.course_id)
+          );
+          
+          console.log(`Courses not taken by user: ${notTakenCourses.length}`);
+          console.log("Sample of available non-taken courses:", notTakenCourses.slice(0, 10));
+        }
+      }
+      
       console.log("Sending taken course IDs to Edge Function:", takenCourseIds);
       console.log("Sending enrolled course IDs to Edge Function:", enrolledCourseIds);
       
-      const courseCategories = categories || ["전공필수", "전공선택", "전공기초"];
+      const payload = {
+        userId: user.id,
+        takenCourseIds,
+        categories: courseCategories,
+        courseOverlapCheckPriority: true,
+        enrolledCourseIds
+      };
+      
+      console.log("Full payload being sent to the Edge Function:", payload);
       
       const { data, error } = await supabase.functions.invoke('generate-schedules', {
-        body: {
-          userId: user.id,
-          takenCourseIds,
-          categories: courseCategories,
-          courseOverlapCheckPriority: true,
-          enrolledCourseIds // Pass enrolled course IDs to check prerequisites
-        }
+        body: payload
       });
       
       if (error) {
+        console.error("Edge Function error:", error);
         throw new Error('시간표 생성에 실패했습니다.');
       }
       
