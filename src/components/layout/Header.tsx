@@ -1,4 +1,3 @@
-
 import { Home, Calendar, GraduationCap, Menu, Settings } from "lucide-react";
 import { Link, NavLink as RouterNavLink } from "react-router-dom";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -8,7 +7,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 const Logo = () => (
   <Link to="/" className="flex items-center space-x-2 font-bold">
     <GraduationCap className="h-6 w-6 text-primary" />
-    <span>KUBS Scheduler</span>
+    <span>GradTrack</span>
   </Link>
 );
 
