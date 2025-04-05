@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState, useEffect } from "react";
 import { useSchedule } from "@/hooks/useSchedule";
 import Footer from "@/components/layout/Footer";
@@ -228,7 +229,7 @@ const Schedule = () => {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <div>
-                  <CardTitle>2024년 1학기 시간표</CardTitle>
+                  <CardTitle>2025년 2학기 시간표</CardTitle>
                   <CardDescription>총 {consolidatedCourses.length}과목 {totalCredits}학점</CardDescription>
                 </div>
                 {!isViewOnlyMode && user ? (

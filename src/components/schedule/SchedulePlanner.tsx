@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Button } from "@/components/common/Button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/common/Card";
@@ -17,7 +16,7 @@ interface ScheduleCourse {
   endTime: string;
   location: string;
   credit: number;
-  fromHistory?: boolean; // New flag to identify courses from history
+  fromHistory?: boolean;
 }
 
 const timeSlots = [
@@ -41,9 +40,9 @@ interface SchedulePlannerProps {
   onViewOtherSchedules?: () => void;
 }
 
-const MAX_CREDITS_PER_SEMESTER = 21; // 학기당 최대 학점
-const MIN_CREDITS_PER_SEMESTER = 12; // 학기당 최소 학점 (권장)
-const MAX_COURSES_PER_DAY = 4; // 하루 최대 과목 수
+const MAX_CREDITS_PER_SEMESTER = 21;
+const MIN_CREDITS_PER_SEMESTER = 12;
+const MAX_COURSES_PER_DAY = 4;
 
 const SchedulePlanner = ({ 
   courses,
@@ -242,7 +241,7 @@ const SchedulePlanner = ({
       </CardHeader>
       <CardContent>
         <div className="mb-4 flex justify-between items-center">
-          <h3 className="text-lg font-medium">2024년 1학기 시간표</h3>
+          <h3 className="text-lg font-medium">2025년 2학기 시간표</h3>
         </div>
         
         {(hasDuplicateTimes || isBelowRecommendedCredits || totalCredits > MAX_CREDITS_PER_SEMESTER) && (
