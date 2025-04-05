@@ -81,8 +81,9 @@ export const useSchedule = () => {
       }
       
       if (data) {
-        setEnrolledCourseIds(data.map(item => item.course_id));
-        console.log('Fetched enrolled course IDs:', data.map(item => item.course_id));
+        const courseIds = data.map(item => item.course_id);
+        setEnrolledCourseIds(courseIds);
+        console.log('Fetched enrolled course IDs:', courseIds);
       }
     } catch (error) {
       console.error('Error fetching enrolled courses:', error);
@@ -256,6 +257,8 @@ export const useSchedule = () => {
       }
       
       const takenCourseIds = enrollments.map(enrollment => enrollment.course_id);
+      console.log("Sending taken course IDs to Edge Function:", takenCourseIds);
+      console.log("Sending enrolled course IDs to Edge Function:", enrolledCourseIds);
       
       const courseCategories = categories || ["전공필수", "전공선택", "전공기초"];
       
@@ -280,7 +283,7 @@ export const useSchedule = () => {
         setIsScheduleDialogOpen(true);
         toast({
           title: "시간표 생성 완료",
-          description: `${data.schedules.length}개의 시간표가 생성되었습니다.`
+          description: `${data.schedules.length}개의 시간표가 생성되었습니다. 총 ${data.coursesConsidered || '?'}개 과목 중에서 선택되었습니다.`,
         });
       } else {
         toast({

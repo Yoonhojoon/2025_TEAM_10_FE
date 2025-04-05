@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 
@@ -56,6 +57,12 @@ serve(async (req) => {
       );
     }
     
+    // Log what courses are marked as taken
+    console.log("User ID:", userId);
+    console.log("Courses marked as taken (IDs):", takenCourseIds);
+    console.log("Categories for course search:", categories);
+    console.log("Currently enrolled course IDs:", enrolledCourseIds);
+    
     // Fetch user department
     const { data: userData, error: userError } = await supabase
       .from('users')
@@ -71,6 +78,7 @@ serve(async (req) => {
     }
     
     const departmentId = userData.department_id;
+    console.log("User department ID:", departmentId);
     
     // Fetch "전체" department ID
     const { data: generalDept, error: generalDeptError } = await supabase
@@ -84,6 +92,7 @@ serve(async (req) => {
     }
     
     const generalDeptId = generalDept?.department_id;
+    console.log("General department ID:", generalDeptId);
     
     // Create an array of department IDs to query
     const departmentIds = [departmentId];
@@ -106,6 +115,8 @@ serve(async (req) => {
       );
     }
     
+    console.log(`Found ${availableCourses.length} courses matching department and category criteria`);
+    
     // Fetch all prerequisites
     const { data: prerequisites, error: prerequisitesError } = await supabase
       .from('prerequisites')
@@ -114,12 +125,22 @@ serve(async (req) => {
     if (prerequisitesError) {
       console.log('Error fetching prerequisites:', prerequisitesError.message);
       // Continue without prerequisites check if there's an error
+    } else {
+      console.log(`Found ${prerequisites.length} prerequisite relationships in total`);
     }
     
     // Filter out courses that the user has already taken
     let filteredCourses = availableCourses.filter(course => 
       !takenCourseIds.includes(course.course_id)
     );
+    
+    console.log(`After filtering out taken courses, ${filteredCourses.length} courses remain`);
+    
+    // Debug info: log first few courses before prerequisite filtering
+    console.log("Sample courses before prerequisite filtering:");
+    filteredCourses.slice(0, 5).forEach(course => {
+      console.log(`- ${course.course_name} (${course.course_code}), category: ${course.category}`);
+    });
     
     // Filter out courses where prerequisites haven't been met
     if (prerequisites) {
@@ -133,6 +154,7 @@ serve(async (req) => {
       });
       
       // Filter courses based on prerequisites
+      const coursesBeforePrereqFilter = filteredCourses.length;
       filteredCourses = filteredCourses.filter(course => {
         const prereqs = coursePrerequisites[course.course_id];
         if (!prereqs || prereqs.length === 0) {
@@ -140,12 +162,31 @@ serve(async (req) => {
           return true;
         }
         
-        // Check if all prerequisites are in user's enrolled courses
-        return prereqs.every(prereqId => 
-          enrolledCourseIds.includes(prereqId)
+        // Check if all prerequisites are in user's taken courses or currently enrolled courses
+        const allPrereqsMet = prereqs.every(prereqId => 
+          takenCourseIds.includes(prereqId) || enrolledCourseIds.includes(prereqId)
         );
+        
+        if (!allPrereqsMet) {
+          // Log which prerequisites are missing
+          const missingPrereqs = prereqs.filter(prereqId => 
+            !takenCourseIds.includes(prereqId) && !enrolledCourseIds.includes(prereqId)
+          );
+          console.log(`Course ${course.course_name} (${course.course_code}) filtered out due to missing prerequisites: ${missingPrereqs.length} missing`);
+        }
+        
+        return allPrereqsMet;
       });
+      
+      console.log(`Prerequisite filter removed ${coursesBeforePrereqFilter - filteredCourses.length} courses`);
     }
+    
+    // Log final course list
+    console.log(`Final course list contains ${filteredCourses.length} courses`);
+    console.log("Sample courses from final list:");
+    filteredCourses.slice(0, 5).forEach(course => {
+      console.log(`- ${course.course_name} (${course.course_code}), category: ${course.category}`);
+    });
     
     if (filteredCourses.length === 0) {
       return new Response(
@@ -163,11 +204,13 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         schedules,
+        coursesConsidered: filteredCourses.length,
         message: schedules.length > 0 ? undefined : '시간표를 생성할 수 없습니다. 다른 카테고리를 선택하거나 수강 내역을 확인해주세요.'
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
+    console.error("Error in generate-schedules function:", error);
     return new Response(
       JSON.stringify({ error: error.message }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
@@ -272,6 +315,11 @@ function generateSchedules(courses: Course[], prioritizeNoConflicts = true): Sch
   );
   const schedule3 = createSchedule(timeSortedCourses, "이른 시간 선호 시간표", true);
   if (schedule3.과목들.length > 0) schedules.push(schedule3);
+  
+  console.log(`Generated ${schedules.length} distinct schedules`);
+  schedules.forEach((schedule, i) => {
+    console.log(`Schedule ${i+1}: "${schedule.name}" with ${schedule.과목들.length} courses and ${schedule.총_학점} credits`);
+  });
   
   return schedules;
 }
