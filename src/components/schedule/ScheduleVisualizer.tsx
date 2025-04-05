@@ -119,7 +119,8 @@ const ScheduleVisualizer: React.FC<ScheduleVisualizerProps> = ({ schedule }) => 
       code,
       location,
       scheduleParsed: parseCourseSchedule(scheduleStr),
-      scheduleStr
+      scheduleStr,
+      color: getCourseColor(code)  // Generate a color for each course based on its code
     };
   });
 
@@ -172,8 +173,6 @@ const ScheduleVisualizer: React.FC<ScheduleVisualizerProps> = ({ schedule }) => 
               const height = `${durationMinutes}px`;
               const width = `calc(${100 / 6}% - 2px)`;
               
-              const backgroundColor = getCourseColor(course.code);
-              
               return (
                 <div
                   key={`${course.id}-${index}`}
@@ -183,7 +182,7 @@ const ScheduleVisualizer: React.FC<ScheduleVisualizerProps> = ({ schedule }) => 
                     top,
                     height,
                     width,
-                    backgroundColor,
+                    backgroundColor: course.color,
                   }}
                 >
                   <div className="font-medium text-sm truncate">{course.name}</div>

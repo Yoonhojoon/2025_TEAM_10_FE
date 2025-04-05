@@ -1,5 +1,4 @@
-
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { useSchedule } from "@/hooks/useSchedule";
 import Footer from "@/components/layout/Footer";
 import Header from "@/components/layout/Header";
@@ -13,11 +12,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { AlertDialog, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import AvailableCoursesDialog from "@/components/schedule/AvailableCoursesDialog";
 import SaveScheduleDialog from "@/components/schedule/SaveScheduleDialog";
-import { GraduationCap, BookPlus, Save } from "lucide-react";
+import ShareScheduleDialog from "@/components/schedule/ShareScheduleDialog";
+import { GraduationCap, BookPlus, Save, Share } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import GraduationRequirementsModal from "@/components/dashboard/GraduationRequirementsModal";
 import { TimeConflict } from "@/types/schedule";
 import CategorySelectionModal from "@/components/schedule/CategorySelectionModal";
+import { getSharedScheduleFromUrl } from "@/utils/shareScheduleUtils";
+import { useToast } from "@/hooks/use-toast";
 
 const Schedule = () => {
   const {
@@ -42,14 +44,29 @@ const Schedule = () => {
     handleViewOtherSchedules,
     handleAddCourse,
     handleSaveSchedule,
-    handleDeleteSchedule
+    handleDeleteSchedule,
+    setCourses
   } = useSchedule();
   
   const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
+  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [selectedCategories, setSelectedCategories] = useState<string[]>(["전공필수", "전공선택", "전공기초"]);
+  const { toast } = useToast();
   
-  // Format current schedule for the visualizer
+  useEffect(() => {
+    const sharedSchedule = getSharedScheduleFromUrl();
+    if (sharedSchedule && sharedSchedule.length > 0) {
+      if (window.confirm("공유된 시간표를 불러오시겠습니까?")) {
+        setCourses(sharedSchedule);
+        toast({
+          title: "시간표 로드 완료",
+          description: "공유된 시간표를 성공적으로 불러왔습니다."
+        });
+      }
+    }
+  }, [setCourses, toast]);
+  
   const currentSchedule = {
     name: "현재 시간표",
     courses: courses.map(course => ({
@@ -65,7 +82,6 @@ const Schedule = () => {
     }))
   };
 
-  // Detect time conflicts
   const timeConflicts = useMemo(() => {
     const conflicts: TimeConflict[] = [];
     
@@ -102,10 +118,8 @@ const Schedule = () => {
     setIsScheduleDialogOpen(false);
   };
 
-  // Modified function to return Promise<void>
   const handleGenerateWithCategories = async (): Promise<void> => {
     setIsCategoryModalOpen(true);
-    // Return a resolved promise to satisfy the type requirement
     return Promise.resolve();
   };
 
@@ -137,6 +151,17 @@ const Schedule = () => {
                   <CardDescription>총 {consolidatedCourses.length}과목 {totalCredits}학점</CardDescription>
                 </div>
                 <div className="flex gap-3">
+                  <Button 
+                    onClick={() => setIsShareDialogOpen(true)} 
+                    variant="outline"
+                    size="sm"
+                    className="flex gap-2"
+                    disabled={courses.length === 0}
+                  >
+                    <Share size={16} />
+                    시간표 공유
+                  </Button>
+                
                   <Button 
                     onClick={() => setIsSaveDialogOpen(true)} 
                     variant="default"
@@ -221,6 +246,12 @@ const Schedule = () => {
         isOpen={isCategoryModalOpen}
         onOpenChange={setIsCategoryModalOpen}
         onSelectCategories={handleCategoriesSelected}
+      />
+      
+      <ShareScheduleDialog
+        isOpen={isShareDialogOpen}
+        onOpenChange={setIsShareDialogOpen}
+        courses={courses}
       />
     </div>
   );

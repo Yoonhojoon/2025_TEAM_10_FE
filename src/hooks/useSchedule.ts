@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useToast } from "@/hooks/use-toast";
@@ -28,7 +27,6 @@ export const useSchedule = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   
-  // Load saved schedules when user is authenticated
   useEffect(() => {
     if (!user) return;
     
@@ -66,9 +64,7 @@ export const useSchedule = () => {
     fetchSavedSchedules();
   }, [user, toast]);
   
-  // Add a course to the schedule
   const handleAddCourse = (course: Omit<ScheduleCourse, "id">) => {
-    // Check if the course code already exists in the schedule
     const courseExists = courses.some(existingCourse => existingCourse.code === course.code);
     
     if (courseExists) {
@@ -88,12 +84,10 @@ export const useSchedule = () => {
     return true;
   };
   
-  // Remove a course from the schedule
   const handleDeleteCourse = (id: string) => {
     setCourses(courses.filter(course => course.id !== id));
   };
   
-  // Delete a saved schedule
   const handleDeleteSchedule = async (scheduleId: string) => {
     if (!user) {
       toast({
@@ -139,7 +133,6 @@ export const useSchedule = () => {
     }
   };
   
-  // Generate schedules using Supabase edge function
   const handleGenerateSchedules = async (categories?: string[]) => {
     if (!user) {
       toast({
@@ -164,7 +157,6 @@ export const useSchedule = () => {
       
       const takenCourseIds = enrollments.map(enrollment => enrollment.course_id);
       
-      // Use provided categories or default to major courses
       const courseCategories = categories || ["전공필수", "전공선택", "전공기초"];
       
       const { data, error } = await supabase.functions.invoke('generate-schedules', {
@@ -207,7 +199,6 @@ export const useSchedule = () => {
     }
   };
   
-  // Apply a schedule to the current view
   const applySchedule = (schedule: GeneratedSchedule) => {
     const newCourses: ScheduleCourse[] = [];
     
@@ -278,7 +269,6 @@ export const useSchedule = () => {
     }
   };
   
-  // View a saved schedule
   const handleViewSchedule = (scheduleId: string) => {
     const schedule = savedSchedules.find(s => s.schedule_id === scheduleId);
     if (schedule) {
@@ -292,7 +282,6 @@ export const useSchedule = () => {
     }
   };
   
-  // View saved schedules
   const handleViewOtherSchedules = () => {
     if (savedSchedules.length === 0) {
       toast({
@@ -305,7 +294,6 @@ export const useSchedule = () => {
     setIsViewingSchedules(true);
   };
   
-  // Save a schedule
   const handleSaveSchedule = async (scheduleName: string, tags: string[] = []) => {
     if (!user) {
       toast({
@@ -403,7 +391,6 @@ export const useSchedule = () => {
     }
   };
 
-  // Calculate consolidated courses for display
   const consolidatedCourses = useMemo(() => {
     const courseMap = new Map<string, ConsolidatedCourse>();
     
@@ -432,7 +419,6 @@ export const useSchedule = () => {
     return Array.from(courseMap.values());
   }, [courses]);
 
-  // Calculate total credits
   const totalCredits = useMemo(() => {
     const courseCodes = new Set<string>();
     let total = 0;
@@ -469,6 +455,7 @@ export const useSchedule = () => {
     handleViewSchedule,
     handleViewOtherSchedules,
     handleSaveSchedule,
-    handleDeleteSchedule
+    handleDeleteSchedule,
+    setCourses
   };
 };
