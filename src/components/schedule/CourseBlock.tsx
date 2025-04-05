@@ -40,7 +40,7 @@ const CourseBlock: React.FC<CourseBlockProps> = ({
   
   return (
     <div
-      className="absolute border-l-4 rounded-md border-primary shadow-sm p-2 overflow-hidden transition-all hover:shadow-md hover:z-20 z-10"
+      className="absolute border border-primary/20 shadow-sm p-2 overflow-hidden transition-all hover:shadow-md z-10"
       style={{
         left,
         top,

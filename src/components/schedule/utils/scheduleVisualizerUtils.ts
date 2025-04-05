@@ -51,25 +51,11 @@ export const timeToRowPosition = (time: string): number => {
   return (hours - 9) * 60 + minutes; // Minutes from 9:00 AM
 };
 
-// Generate vibrant color based on course code
+// Generate random color based on course code
 export const getCourseColor = (courseCode: string): string => {
-  // Predefined vibrant colors for better visual appeal
-  const colors = [
-    '#9b87f5', // Primary Purple
-    '#0EA5E9', // Ocean Blue
-    '#F97316', // Bright Orange
-    '#8B5CF6', // Vivid Purple
-    '#E5DEFF', // Soft Purple
-    '#1EAEDB', // Bright Blue
-    '#7E69AB', // Secondary Purple
-    '#6E59A5', // Tertiary Purple
-  ];
-  
-  // Generate a consistent index based on the course code
   const seed = courseCode.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  const colorIndex = seed % colors.length;
-  
-  return colors[colorIndex];
+  const hue = seed % 360;
+  return `hsla(${hue}, 70%, 85%, 0.8)`;
 };
 
 // Map week days to Korean characters

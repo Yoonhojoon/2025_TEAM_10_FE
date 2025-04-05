@@ -21,48 +21,47 @@ export const parseScheduleTime = (scheduleTime: string) => {
     
     for (const schedule of schedules) {
       console.log("Processing schedule part:", schedule);
-      const parts = schedule.split(' ');
       
-      // Need at least day and time parts
-      if (parts.length < 2) {
-        console.warn("Schedule format incorrect, missing parts:", schedule);
+      // Extract day and time separately with regex
+      const dayMatch = schedule.match(/[월화수목금]/);
+      const timeMatch = schedule.match(/(\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})/);
+      
+      if (!dayMatch || !timeMatch) {
+        console.warn("Schedule format incorrect:", schedule);
         continue;
       }
       
+      const day = dayMatch[0];
       // Map Korean day to English
-      const dayPart = parts[0];
-      let day: string;
+      let dayCode: string;
       
-      if (dayPart === '월' || dayPart.toLowerCase() === 'mon') {
-        day = 'mon';
-      } else if (dayPart === '화' || dayPart.toLowerCase() === 'tue') {
-        day = 'tue';
-      } else if (dayPart === '수' || dayPart.toLowerCase() === 'wed') {
-        day = 'wed';
-      } else if (dayPart === '목' || dayPart.toLowerCase() === 'thu') {
-        day = 'thu';
-      } else if (dayPart === '금' || dayPart.toLowerCase() === 'fri') {
-        day = 'fri';
+      if (day === '월') {
+        dayCode = 'mon';
+      } else if (day === '화') {
+        dayCode = 'tue';
+      } else if (day === '수') {
+        dayCode = 'wed';
+      } else if (day === '목') {
+        dayCode = 'thu';
+      } else if (day === '금') {
+        dayCode = 'fri';
       } else {
-        console.warn("Unknown day format:", dayPart);
-        day = 'mon'; // Default to Monday if unknown
+        console.warn("Unknown day format:", day);
+        dayCode = 'mon'; // Default to Monday if unknown
       }
       
       // Parse time range
-      const timePart = parts[1];
-      const timeRange = timePart.split('-');
+      const startHour = parseInt(timeMatch[1]);
+      const startMinute = parseInt(timeMatch[2]);
+      const endHour = parseInt(timeMatch[3]);
+      const endMinute = parseInt(timeMatch[4]);
       
-      if (timeRange.length !== 2) {
-        console.warn("Time range format incorrect:", timePart);
-        continue;
-      }
-      
-      // Ensure time format has seconds if needed
-      const startTime = ensureTimeFormat(timeRange[0]);
-      const endTime = ensureTimeFormat(timeRange[1]);
+      // Format time as HH:MM
+      const startTime = `${startHour.toString().padStart(2, '0')}:${startMinute.toString().padStart(2, '0')}`;
+      const endTime = `${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`;
       
       result.push({
-        day: day as 'mon' | 'tue' | 'wed' | 'thu' | 'fri',
+        day: dayCode as 'mon' | 'tue' | 'wed' | 'thu' | 'fri',
         startTime,
         endTime
       });
