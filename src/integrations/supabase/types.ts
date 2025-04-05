@@ -135,6 +135,42 @@ export type Database = {
           },
         ]
       }
+      prerequisites: {
+        Row: {
+          course_id: string
+          created_at: string | null
+          prerequisite_course_id: string
+          prerequisite_id: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string | null
+          prerequisite_course_id: string
+          prerequisite_id?: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string | null
+          prerequisite_course_id?: string
+          prerequisite_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prerequisites_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["course_id"]
+          },
+          {
+            foreignKeyName: "prerequisites_prerequisite_course_id_fkey"
+            columns: ["prerequisite_course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["course_id"]
+          },
+        ]
+      }
       schedules: {
         Row: {
           created_at: string
@@ -202,6 +238,7 @@ export type Database = {
         | "전공기초"
         | "배분이수교과"
         | "자유이수교과"
+        | "산학필수"
     }
     CompositeTypes: {
       [_ in never]: never

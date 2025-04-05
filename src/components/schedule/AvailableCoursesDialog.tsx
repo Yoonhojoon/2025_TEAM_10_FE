@@ -150,6 +150,7 @@ const AvailableCoursesDialog: React.FC<AvailableCoursesDialogProps> = ({ onAddCo
       case "전공선택": return "전공 선택";
       case "배분이수교과": return "배분 이수";
       case "자유이수교과": return "자유 이수";
+      case "산학필수": return "산학 필수";
       default: return "일반 선택";
     }
   };
@@ -160,7 +161,8 @@ const AvailableCoursesDialog: React.FC<AvailableCoursesDialogProps> = ({ onAddCo
     { value: "전공기초", label: "전공 기초" },
     { value: "전공선택", label: "전공 선택" },
     { value: "배분이수교과", label: "배분 이수" },
-    { value: "자유이수교과", label: "자유 이수" }
+    { value: "자유이수교과", label: "자유 이수" },
+    { value: "산학필수", label: "산학 필수" }
   ];
   
   return (

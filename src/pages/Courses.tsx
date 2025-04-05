@@ -1,3 +1,4 @@
+
 import CourseHistoryInput from "@/components/courses/CourseHistoryInput";
 import Footer from "@/components/layout/Footer";
 import Header from "@/components/layout/Header";
@@ -11,7 +12,7 @@ interface Course {
   id: string;
   code: string;
   name: string;
-  category: "majorRequired" | "majorElective" | "generalRequired" | "generalElective";
+  category: "majorRequired" | "majorElective" | "generalRequired" | "generalElective" | "industryRequired";
   credit: number;
 }
 
@@ -50,11 +51,12 @@ const Courses = () => {
           const formattedCourses = enrollmentsData.map(enrollment => {
             const courseDetails = enrollment.courses;
             
-            const mapCategory = (): "majorRequired" | "majorElective" | "generalRequired" | "generalElective" => {
+            const mapCategory = (): "majorRequired" | "majorElective" | "generalRequired" | "generalElective" | "industryRequired" => {
               const category = courseDetails.category;
               if (category === "전공필수" || category === "전공기초") return "majorRequired";
               if (category === "전공선택") return "majorElective";
               if (category === "배분이수교과") return "generalRequired";
+              if (category === "산학필수") return "industryRequired";
               return "generalElective";
             };
             

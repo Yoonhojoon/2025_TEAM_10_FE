@@ -17,7 +17,7 @@ interface Course {
   id: string;
   code: string;
   name: string;
-  category: "majorRequired" | "majorElective" | "generalRequired" | "generalElective";
+  category: "majorRequired" | "majorElective" | "generalRequired" | "generalElective" | "industryRequired";
   credit: number;
 }
 
@@ -32,7 +32,7 @@ interface DbCourse {
   course_id: string;
   course_code: string;
   course_name: string;
-  category: "전공필수" | "전공선택" | "전공기초" | "배분이수교과" | "자유이수교과";
+  category: "전공필수" | "전공선택" | "전공기초" | "배분이수교과" | "자유이수교과" | "산학필수";
   credit: number;
   department_id: string;
   schedule_time: string;
@@ -95,7 +95,7 @@ const CourseHistoryInput = ({
           }
         } else {
           console.log("No department found for user:", user.id);
-          setDepartmentError("사용자의 학과 정보를 찾을 수 없습니다. 프로필 설정을 완료해주세요.");
+          setDepartmentError("사용자의 학과 정보를 찾을 수 없��니다. 프로필 설정을 완료해주세요.");
         }
       } catch (error) {
         console.error('Error fetching user department:', error);
@@ -169,6 +169,8 @@ const CourseHistoryInput = ({
         query = query.eq('category', '배분이수교과');
       } else if (tabValue === "general-elective") {
         query = query.eq('category', '자유이수교과');
+      } else if (tabValue === "industry-required") {
+        query = query.eq('category', '산학필수');
       }
       
       const { data, error } = await query;
@@ -194,7 +196,7 @@ const CourseHistoryInput = ({
   };
 
   const selectCourseFromDb = (course: DbCourse) => {
-    const mappedCategory = (): "majorRequired" | "majorElective" | "generalRequired" | "generalElective" => {
+    const mappedCategory = (): "majorRequired" | "majorElective" | "generalRequired" | "generalElective" | "industryRequired" => {
       switch (course.category) {
         case "전공필수":
         case "전공기초":
@@ -205,6 +207,8 @@ const CourseHistoryInput = ({
           return "generalRequired";
         case "자유이수교과":
           return "generalElective";
+        case "산학필수":
+          return "industryRequired";
         default:
           return "generalElective";
       }
@@ -284,11 +288,12 @@ const CourseHistoryInput = ({
               
               <div className="py-4">
                 <Tabs defaultValue="major-required" className="w-full">
-                  <TabsList className="grid grid-cols-4 mb-4">
+                  <TabsList className="grid grid-cols-5 mb-4">
                     <TabsTrigger value="major-required" onClick={() => fetchCourses("major-required")}>전공필수</TabsTrigger>
                     <TabsTrigger value="major-elective" onClick={() => fetchCourses("major-elective")}>전공선택</TabsTrigger>
                     <TabsTrigger value="general-required" onClick={() => fetchCourses("general-required")}>교양필수</TabsTrigger>
                     <TabsTrigger value="general-elective" onClick={() => fetchCourses("general-elective")}>교양선택</TabsTrigger>
+                    <TabsTrigger value="industry-required" onClick={() => fetchCourses("industry-required")}>산학필수</TabsTrigger>
                   </TabsList>
                   
                   <TabsContent value="major-required" className="mt-0">
@@ -410,6 +415,34 @@ const CourseHistoryInput = ({
                       </div>
                     )}
                   </TabsContent>
+                  
+                  <TabsContent value="industry-required" className="mt-0">
+                    {isLoadingCourses ? (
+                      <div className="py-8 text-center text-muted-foreground">
+                        과목 정보를 불러오는 중...
+                      </div>
+                    ) : dbCourses.length > 0 ? (
+                      <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-2">
+                        {dbCourses.map(course => (
+                          <div 
+                            key={course.course_id} 
+                            className="p-3 border rounded-md hover:bg-secondary/50 cursor-pointer transition-colors"
+                            onClick={() => selectCourseFromDb(course)}
+                          >
+                            <div className="font-medium">{course.course_name}</div>
+                            <div className="text-sm text-muted-foreground flex justify-between">
+                              <span>{course.course_code}</span>
+                              <span>{course.credit}학점</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="py-8 text-center text-muted-foreground">
+                        등록된 산학필수 과목이 없습니다.
+                      </div>
+                    )}
+                  </TabsContent>
                 </Tabs>
                 
                 <div className="mt-6 border-t pt-4">
@@ -465,6 +498,7 @@ const CourseHistoryInput = ({
                   <option value="majorElective">전공선택</option>
                   <option value="generalRequired">교양필수</option>
                   <option value="generalElective">교양선택</option>
+                  <option value="industryRequired">산학필수</option>
                 </select>
               </div>
               <div>
@@ -520,6 +554,7 @@ const CourseHistoryInput = ({
                       {course.category === "majorElective" && "전공선택"}
                       {course.category === "generalRequired" && "교양필수"}
                       {course.category === "generalElective" && "교양선택"}
+                      {course.category === "industryRequired" && "산학필수"}
                     </TableCell>
                     <TableCell>{course.credit}학점</TableCell>
                     <TableCell className="text-right">
