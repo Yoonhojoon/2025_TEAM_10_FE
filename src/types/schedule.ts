@@ -12,6 +12,8 @@ export interface ScheduleCourse {
   schedule_time?: string;
 }
 
+export type CourseCategory = "전공필수" | "전공선택" | "전공기초" | "배분이수교과" | "자유이수교과" | "산학필수" | "기초교과";
+
 export interface CourseData {
   course_id: string;
   course_name?: string;
@@ -24,7 +26,7 @@ export interface CourseData {
   강의_시간?: string;
   classroom?: string;
   강의실?: string;
-  category?: "전공필수" | "전공선택" | "전공기초" | "배분이수교과" | "자유이수교과" | "산학필수";
+  category?: CourseCategory;
 }
 
 export interface GeneratedSchedule {

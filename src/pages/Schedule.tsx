@@ -17,7 +17,7 @@ import ShareScheduleDialog from "@/components/schedule/ShareScheduleDialog";
 import { GraduationCap, BookPlus, Save, Share, Eye, Bug } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import GraduationRequirementsModal from "@/components/dashboard/GraduationRequirementsModal";
-import { TimeConflict } from "@/types/schedule";
+import { TimeConflict, CourseCategory } from "@/types/schedule";
 import CategorySelectionModal from "@/components/schedule/CategorySelectionModal";
 import { getSharedScheduleFromUrl } from "@/utils/shareScheduleUtils";
 import { useToast } from "@/hooks/use-toast";
@@ -55,7 +55,7 @@ const Schedule = () => {
   const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
-  const [selectedCategories, setSelectedCategories] = useState<string[]>(["전공필수", "전공선택", "전공기초"]);
+  const [selectedCategories, setSelectedCategories] = useState<CourseCategory[]>(["전공필수", "전공선택", "전공기초"]);
   const [isViewOnlyMode, setIsViewOnlyMode] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
@@ -149,7 +149,7 @@ const Schedule = () => {
     return Promise.resolve();
   };
 
-  const handleCategoriesSelected = (categories: string[]) => {
+  const handleCategoriesSelected = (categories: CourseCategory[]) => {
     setSelectedCategories(categories);
     handleGenerateSchedules(categories);
   };

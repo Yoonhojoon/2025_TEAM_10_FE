@@ -5,11 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { AlertTriangle } from "lucide-react";
+import { CourseCategory } from "@/types/schedule";
 
 interface CategorySelectionModalProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  onSelectCategories: (categories: string[]) => void;
+  onSelectCategories: (categories: CourseCategory[]) => void;
 }
 
 const CategorySelectionModal: React.FC<CategorySelectionModalProps> = ({
@@ -17,7 +18,7 @@ const CategorySelectionModal: React.FC<CategorySelectionModalProps> = ({
   onOpenChange,
   onSelectCategories,
 }) => {
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([
+  const [selectedCategories, setSelectedCategories] = useState<CourseCategory[]>([
     "전공필수", "전공선택", "전공기초"
   ]);
   
@@ -31,7 +32,7 @@ const CategorySelectionModal: React.FC<CategorySelectionModalProps> = ({
     setShowWarning(hasGeneralCourses);
   }, [selectedCategories]);
 
-  const categoryOptions = [
+  const categoryOptions: {value: CourseCategory; label: string}[] = [
     { value: "전공필수", label: "전공필수" },
     { value: "전공선택", label: "전공선택" },
     { value: "전공기초", label: "전공기초" },
@@ -41,7 +42,7 @@ const CategorySelectionModal: React.FC<CategorySelectionModalProps> = ({
     { value: "기초교과", label: "기초교과" }
   ];
 
-  const handleToggleCategory = (category: string) => {
+  const handleToggleCategory = (category: CourseCategory) => {
     if (selectedCategories.includes(category)) {
       setSelectedCategories(selectedCategories.filter(c => c !== category));
     } else {

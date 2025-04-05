@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useToast } from "@/hooks/use-toast";
@@ -12,6 +13,9 @@ import {
   CourseData 
 } from "@/types/schedule";
 import { parseScheduleTime, formatScheduleTime, getKoreanDayAbbreviation } from "@/utils/scheduleUtils";
+
+// Define the course category type to match the Supabase enum
+type CourseCategory = "전공필수" | "전공선택" | "전공기초" | "배분이수교과" | "자유이수교과" | "산학필수" | "기초교과";
 
 export const useSchedule = () => {
   const [courses, setCourses] = useState<ScheduleCourse[]>([]);
@@ -271,7 +275,14 @@ export const useSchedule = () => {
         console.log('Detailed information about taken courses:', takenCourses);
       }
       
-      const courseCategories = categories || ["전공필수", "전공선택", "전공기초"];
+      // Convert the incoming string array to the proper CourseCategory type
+      const defaultCategories: CourseCategory[] = ["전공필수", "전공선택", "전공기초"];
+      const courseCategories: CourseCategory[] = categories 
+        ? categories.filter((cat): cat is CourseCategory => 
+            ["전공필수", "전공선택", "전공기초", "배분이수교과", "자유이수교과", "산학필수", "기초교과"].includes(cat)
+          ) 
+        : defaultCategories;
+        
       console.log("Selected course categories for generation:", courseCategories);
       
       const { data: userData, error: userError } = await supabase
