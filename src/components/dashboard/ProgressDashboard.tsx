@@ -3,7 +3,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ProgressBar } from "@/components/common/ProgressBar";
 import { ArrowUpRight, Award, BookOpen, GraduationCap, Layers } from "lucide-react";
 import { Link } from "react-router-dom";
-import { Course } from "../courses/types";
+import { useState } from "react";
+import CourseProgressModal from "./CourseProgressModal";
 
 interface ProgressData {
   overall: number;
@@ -21,8 +22,34 @@ interface ProgressData {
   requiredGeneralCredits: number;
 }
 
+// 카테고리 매핑 정보
+interface CategoryMap {
+  [key: string]: string;
+}
+
+const categoryMapping: CategoryMap = {
+  majorRequired: "전공필수",
+  majorElective: "전공선택",
+  majorBasic: "전공기초",
+  generalRequired: "배분이수교과",
+  generalElective: "자유이수교과",
+  industryRequired: "산학필수"
+};
+
 const ProgressDashboard = ({ data }: { data: ProgressData }) => {
-  // Calculate creditValues based on estimates from the percentages and required credits
+  // 모달 상태 관리
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string>("");
+  const [selectedCategoryKorean, setSelectedCategoryKorean] = useState<string>("");
+  
+  // 카테고리 클릭 핸들러
+  const handleCategoryClick = (category: string) => {
+    setSelectedCategory(category);
+    setSelectedCategoryKorean(categoryMapping[category]);
+    setModalOpen(true);
+  };
+  
+  // 각 카테고리별 필요한 학점 계산
   const majorRequiredCredits = Math.round(data.requiredMajorCredits * (data.majorRequired / 100));
   const majorElectiveCredits = Math.round(data.requiredMajorCredits * (data.majorElective / 100));
   const majorBasicCredits = Math.round(data.requiredMajorCredits * (data.majorBasic / 100));
@@ -30,11 +57,11 @@ const ProgressDashboard = ({ data }: { data: ProgressData }) => {
   const generalElectiveCredits = Math.round(data.requiredGeneralCredits * (data.generalElective / 100));
   const industryRequiredCredits = Math.round(data.requiredMajorCredits * (data.industryRequired / 100));
 
-  const requiredMajorRequiredCredits = Math.round(data.requiredMajorCredits * 0.45); // Approximately for required major courses
-  const requiredMajorElectiveCredits = Math.round(data.requiredMajorCredits * 0.55); // Approximately for elective major courses
+  const requiredMajorRequiredCredits = Math.round(data.requiredMajorCredits * 0.45);
+  const requiredMajorElectiveCredits = Math.round(data.requiredMajorCredits * 0.55);
   const requiredMajorBasicCredits = Math.round(data.requiredMajorCredits * 0.2);
-  const requiredGenRequiredCredits = Math.round(data.requiredGeneralCredits * 0.7); // Approximately for required general courses
-  const requiredGenElectiveCredits = Math.round(data.requiredGeneralCredits * 0.3); // Approximately for elective general courses
+  const requiredGenRequiredCredits = Math.round(data.requiredGeneralCredits * 0.7);
+  const requiredGenElectiveCredits = Math.round(data.requiredGeneralCredits * 0.3);
   const requiredIndustryCredits = Math.round(data.requiredMajorCredits * 0.15);
 
   return (
@@ -114,8 +141,12 @@ const ProgressDashboard = ({ data }: { data: ProgressData }) => {
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
+              {/* 전공필수 */}
               <div className="space-y-2">
-                <div className="flex justify-between items-center">
+                <div 
+                  className="flex justify-between items-center cursor-pointer hover:bg-secondary/40 p-2 rounded-md transition-colors"
+                  onClick={() => handleCategoryClick("majorRequired")}
+                >
                   <h4 className="font-medium">전공필수</h4>
                   <span className="text-sm font-medium">{data.majorRequired}%</span>
                 </div>
@@ -128,8 +159,12 @@ const ProgressDashboard = ({ data }: { data: ProgressData }) => {
                 </div>
               </div>
               
+              {/* 전공선택 */}
               <div className="space-y-2">
-                <div className="flex justify-between items-center">
+                <div 
+                  className="flex justify-between items-center cursor-pointer hover:bg-secondary/40 p-2 rounded-md transition-colors"
+                  onClick={() => handleCategoryClick("majorElective")}
+                >
                   <h4 className="font-medium">전공선택</h4>
                   <span className="text-sm font-medium">{data.majorElective}%</span>
                 </div>
@@ -142,8 +177,12 @@ const ProgressDashboard = ({ data }: { data: ProgressData }) => {
                 </div>
               </div>
               
+              {/* 전공기초 */}
               <div className="space-y-2">
-                <div className="flex justify-between items-center">
+                <div 
+                  className="flex justify-between items-center cursor-pointer hover:bg-secondary/40 p-2 rounded-md transition-colors"
+                  onClick={() => handleCategoryClick("majorBasic")}
+                >
                   <h4 className="font-medium">전공기초</h4>
                   <span className="text-sm font-medium">{data.majorBasic}%</span>
                 </div>
@@ -156,8 +195,12 @@ const ProgressDashboard = ({ data }: { data: ProgressData }) => {
                 </div>
               </div>
               
+              {/* 산학필수 */}
               <div className="space-y-2">
-                <div className="flex justify-between items-center">
+                <div 
+                  className="flex justify-between items-center cursor-pointer hover:bg-secondary/40 p-2 rounded-md transition-colors"
+                  onClick={() => handleCategoryClick("industryRequired")}
+                >
                   <h4 className="font-medium">산학필수</h4>
                   <span className="text-sm font-medium">{data.industryRequired}%</span>
                 </div>
@@ -170,8 +213,12 @@ const ProgressDashboard = ({ data }: { data: ProgressData }) => {
                 </div>
               </div>
               
+              {/* 배분이수교과 */}
               <div className="space-y-2">
-                <div className="flex justify-between items-center">
+                <div 
+                  className="flex justify-between items-center cursor-pointer hover:bg-secondary/40 p-2 rounded-md transition-colors"
+                  onClick={() => handleCategoryClick("generalRequired")}
+                >
                   <h4 className="font-medium">배분이수교과</h4>
                   <span className="text-sm font-medium">{data.generalRequired}%</span>
                 </div>
@@ -184,8 +231,12 @@ const ProgressDashboard = ({ data }: { data: ProgressData }) => {
                 </div>
               </div>
               
+              {/* 자유이수교과 */}
               <div className="space-y-2">
-                <div className="flex justify-between items-center">
+                <div 
+                  className="flex justify-between items-center cursor-pointer hover:bg-secondary/40 p-2 rounded-md transition-colors"
+                  onClick={() => handleCategoryClick("generalElective")}
+                >
                   <h4 className="font-medium">자유이수교과</h4>
                   <span className="text-sm font-medium">{data.generalElective}%</span>
                 </div>
@@ -201,6 +252,14 @@ const ProgressDashboard = ({ data }: { data: ProgressData }) => {
           </CardContent>
         </Card>
       </div>
+      
+      {/* 모달 컴포넌트 */}
+      <CourseProgressModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        category={selectedCategory}
+        categoryKorean={selectedCategoryKorean}
+      />
     </div>
   );
 };
