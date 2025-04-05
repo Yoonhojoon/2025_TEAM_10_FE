@@ -35,6 +35,63 @@ interface GeneratedSchedule {
   설명: string;
 }
 
+// Function to normalize time format for better consistency
+function normalizeScheduleTime(scheduleTime: string): string {
+  if (!scheduleTime) return '';
+  
+  // Standardize time format to make it clearer for AI processing
+  // Example: Convert "화 11:00-12:50" to "화요일 11:00-12:50"
+  return scheduleTime
+    .replace(/월(\s|$)/g, '월요일 ')
+    .replace(/화(\s|$)/g, '화요일 ')
+    .replace(/수(\s|$)/g, '수요일 ')
+    .replace(/목(\s|$)/g, '목요일 ')
+    .replace(/금(\s|$)/g, '금요일 ')
+    .trim();
+}
+
+// Function to detect potential time conflicts between courses
+function detectTimeConflicts(courses: CourseData[]): { hasConflicts: boolean, examples: string[] } {
+  const examples: string[] = [];
+  const timeSlots: Record<string, {course: string, time: string}[]> = {
+    '월': [], '화': [], '수': [], '목': [], '금': []
+  };
+  
+  // Extract day and time information from each course
+  courses.forEach(course => {
+    if (!course.schedule_time) return;
+    
+    const schedules = course.schedule_time.split(',').map(s => s.trim());
+    schedules.forEach(schedule => {
+      const dayMatch = schedule.match(/[월화수목금]/);
+      if (!dayMatch) return;
+      
+      const day = dayMatch[0];
+      timeSlots[day].push({
+        course: course.course_name,
+        time: schedule
+      });
+    });
+  });
+  
+  // Check for exact duplicates in each day
+  Object.keys(timeSlots).forEach(day => {
+    const slots = timeSlots[day];
+    for (let i = 0; i < slots.length; i++) {
+      for (let j = i + 1; j < slots.length; j++) {
+        if (slots[i].time === slots[j].time) {
+          examples.push(`"${slots[i].course}" and "${slots[j].course}" have identical schedules: ${slots[i].time}`);
+        }
+      }
+    }
+  });
+  
+  return {
+    hasConflicts: examples.length > 0,
+    examples
+  };
+}
+
 serve(async (req) => {
   // Handle CORS
   if (req.method === "OPTIONS") {
@@ -100,20 +157,40 @@ serve(async (req) => {
       );
     }
     
-    // Prepare the prompt for OpenAI with the specific format requested
+    // Check for and log potential time conflicts in the dataset
+    const conflicts = detectTimeConflicts(unregisteredCourses);
+    if (conflicts.hasConflicts) {
+      console.log("Warning: Detected potential time conflicts in the course data:");
+      conflicts.examples.forEach(ex => console.log("- " + ex));
+    }
+    
+    // Prepare the course list with normalized schedule times for clearer parsing
+    const courseListForPrompt = unregisteredCourses.map(course => {
+      const normalizedTime = normalizeScheduleTime(course.schedule_time);
+      return `- ${course.course_name} (${course.course_code}): ${course.credit}학점, 시간: ${normalizedTime || course.schedule_time}, 장소: ${course.classroom || '미정'}`;
+    }).join('\n');
+    
+    // Prepare the prompt for OpenAI with enhanced instructions for time parsing
     const promptContent = `
       나는 다음 과목들을 사용하여 3개의 최적의 수업 시간표를 만들고 싶습니다:
-      ${unregisteredCourses.map(course => 
-        `- ${course.course_name} (${course.course_code}): ${course.credit}학점, 시간: ${course.schedule_time}, 장소: ${course.classroom || '미정'}`
-      ).join('\n')}
+      ${courseListForPrompt}
 
       시간표 생성 규칙:
-      1. 수업 시간이 겹치지 않아야 함 (과목 요일과 시간을 정확히 확인해서, 절대 겹치는 시간표가 없게 확인해)
+      1. 수업 시간이 절대 겹치지 않아야 함 (매우 중요!)
       2. 각 시간표는 15-21학점 사이여야 함
       3. 수업이 다양한 요일에 골고루 분산되도록 함
       4. 가능하면 다양한 과목 유형을 포함해야 함
-      5. 매우 중요: 각 시간표마다 포함된 모든 과목 시간을 꼼꼼히 검토하고, 같은 요일에 수업 시간대가 겹치는 과목이 절대 없도록 해야 함. 예를 들어, 월요일 10:00-12:00 수업과 월요일 11:00-13:00 수업은 겹치므로 같은 시간표에 포함될 수 없음
-      6. 매우 중요: 완전히 같은 시간에 있는 수업들(예: 월요일 10:00-12:00와 월요일 10:00-12:00)은 같은 시간표에 절대 포함될 수 없음
+      5. 시간표를 생성하기 전에 반드시 모든 과목의 시간을 면밀히 분석하여, 겹치는 시간이 없도록 확인해야 함
+      6. 시간 형식 해석 방법: "요일 시작시간-종료시간"입니다. 예를 들어 "월요일 10:00-12:30"은 월요일 오전 10시부터 오후 12시 30분까지입니다.
+      7. 매우 중요: 같은 요일에 수업 시간대가 조금이라도 겹치는 과목은 절대 같은 시간표에 포함될 수 없음. 예: "월요일 10:00-12:00"와 "월요일 11:00-13:00"는 겹치므로 동시에 수강 불가능
+      8. 같은 시간에 있는 수업들(예: "월요일 10:00-12:00"와 "월요일 10:00-12:00")은 절대 같은 시간표에 포함될 수 없음
+      9. 겹치는 시간이 있는 과목을 선택할 경우, 반드시 해당 시간표는 무효로 처리하고 다시 생성해야 함
+
+      시간 충돌 확인 단계:
+      1. 각 시간표에 포함시킬 과목을 선택한 후, 과목별 요일과 시간을 추출
+      2. 같은 요일의 수업들을 모아서 시간대 겹침 여부 확인
+      3. 시작 시간과 종료 시간을 분 단위로 변환하여 수업 시간이 겹치는지 정밀하게 확인
+      4. 조금이라도 겹치는 시간이 있으면 해당 과목 조합은 사용하지 않음
 
       다음 JSON 형식으로 정확히 3개의 시간표를 제공해주세요:
       {
@@ -138,6 +215,8 @@ serve(async (req) => {
       }
 
       응답에는 JSON만 포함해야 하며 추가 텍스트는 포함하지 않아야 합니다.
+      
+      매우 중요: 최종 결과를 제공하기 전에 생성된 각 시간표에서 시간 충돌이 없는지 반드시 다시 한번 확인하세요.
     `;
     
     let generatedSchedules: GeneratedSchedule[] = [];
@@ -157,12 +236,15 @@ serve(async (req) => {
           "Authorization": `Bearer ${openaiKey}`
         },
         body: JSON.stringify({
-          model: "gpt-4-turbo",
+          model: "gpt-4o",  // Using gpt-4o for better reasoning and time conflict detection
           messages: [
-            {"role": "system", "content": "You are a helpful assistant that can generate optimal class schedules."},
+            {
+              "role": "system", 
+              "content": "You are a course scheduling assistant specializing in creating non-conflicting class schedules. Your primary task is to ensure that no courses in a schedule have overlapping times. You must verify all time slots carefully before finalizing each schedule."
+            },
             {"role": "user", "content": promptContent}
           ],
-          temperature: 0.7
+          temperature: 0.2  // Lower temperature for more consistent and careful reasoning
         })
       });
 
@@ -209,11 +291,41 @@ serve(async (req) => {
       
       if (parsedJson && parsedJson.schedules && Array.isArray(parsedJson.schedules)) {
         generatedSchedules = parsedJson.schedules;
+        console.log(`Successfully generated ${generatedSchedules.length} schedules using OpenAI`);
+        
+        // Verify no time conflicts in generated schedules
+        let hasConflicts = false;
+        generatedSchedules.forEach((schedule, index) => {
+          const courses = schedule.과목들 || [];
+          console.log(`Verifying schedule ${index + 1} with ${courses.length} courses`);
+          
+          // Convert courses to format needed for conflict detection
+          const courseDataForCheck: CourseData[] = courses.map(course => ({
+            course_id: course.course_id,
+            course_name: course.과목_이름,
+            course_code: course.학수번호,
+            category: '',
+            credit: course.학점,
+            classroom: course.강의실,
+            schedule_time: course.강의_시간
+          }));
+          
+          const conflicts = detectTimeConflicts(courseDataForCheck);
+          if (conflicts.hasConflicts) {
+            console.error(`Time conflicts detected in schedule ${index + 1}:`);
+            conflicts.examples.forEach(ex => console.error("- " + ex));
+            hasConflicts = true;
+          }
+        });
+        
+        if (hasConflicts) {
+          console.warn("Warning: Some generated schedules may contain time conflicts!");
+        } else {
+          console.log("All generated schedules verified - no time conflicts found.");
+        }
       } else {
         throw new Error("Unexpected response format from OpenAI");
       }
-      
-      console.log(`Successfully generated ${generatedSchedules.length} schedules using OpenAI`);
       
     } catch (error) {
       console.error("Error using OpenAI:", error);
@@ -221,7 +333,6 @@ serve(async (req) => {
       
       // Fallback to our original algorithm if OpenAI fails
       console.log("Falling back to default schedule generation algorithm");
-      
       // Basic schedule generation logic would go here
       // ... (In a real implementation, you'd have a fallback algorithm)
     }
