@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { 
@@ -73,17 +74,19 @@ const CourseProgressModal = ({ isOpen, onClose, category, categoryKorean }: Cour
         const completed = allCourses
           .filter(course => completedCourseIds.includes(course.course_id))
           .sort((a, b) => {
-            if (a.grade === null) return 1;
-            if (b.grade === null) return -1;
-            return (a.grade || 0) - (b.grade || 0);
+            // Handle null, undefined or 0 grades
+            const gradeA = a.grade === null || a.grade === 0 ? Infinity : a.grade;
+            const gradeB = b.grade === null || b.grade === 0 ? Infinity : b.grade;
+            return gradeA - gradeB;
           });
         
         const remaining = allCourses
           .filter(course => !completedCourseIds.includes(course.course_id))
           .sort((a, b) => {
-            if (a.grade === null) return 1;
-            if (b.grade === null) return -1;
-            return (a.grade || 0) - (b.grade || 0);
+            // Handle null, undefined or 0 grades
+            const gradeA = a.grade === null || a.grade === 0 ? Infinity : a.grade;
+            const gradeB = b.grade === null || b.grade === 0 ? Infinity : b.grade;
+            return gradeA - gradeB;
           });
         
         setCompletedCourses(completed);
@@ -191,11 +194,11 @@ const CourseTable = ({ courses, isEmpty, type, userGrade }: CourseTableProps) =>
           {courses.map((course) => (
             <TableRow 
               key={course.course_id}
-              className={course.grade && userGrade > course.grade ? "bg-red-100/50 dark:bg-red-900/20" : ""}
+              className={course.grade !== null && course.grade > 0 && userGrade > course.grade ? "bg-red-100/50 dark:bg-red-900/20" : ""}
             >
               <TableCell className="font-medium">{course.course_code}</TableCell>
               <TableCell>{course.course_name}</TableCell>
-              <TableCell>{course.grade || "-"}</TableCell>
+              <TableCell>{course.grade && course.grade > 0 ? course.grade : "-"}</TableCell>
               <TableCell className="text-right">{course.credit}</TableCell>
             </TableRow>
           ))}
