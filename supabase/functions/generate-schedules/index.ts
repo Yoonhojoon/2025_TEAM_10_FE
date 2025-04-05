@@ -163,10 +163,10 @@ serve(async (req) => {
     
     console.log(`After filtering out enrolled courses, ${filteredCourses.length} courses remain`);
     
-    // Debug info: log first few courses before prerequisite filtering
-    console.log("Sample courses before prerequisite filtering:");
-    filteredCourses.slice(0, 5).forEach(course => {
-      console.log(`- ${course.course_name} (${course.course_code}), category: ${course.category}`);
+    // Log the first few courses that remain after filtering (these are the non-taken courses)
+    console.log("Sample of available non-taken courses (미이수 과목):");
+    filteredCourses.slice(0, 10).forEach(course => {
+      console.log(`- ${course.course_name} (${course.course_code}), category: ${course.category}, credit: ${course.credit}`);
     });
     
     // Filter out courses where prerequisites haven't been met
@@ -227,11 +227,11 @@ serve(async (req) => {
       }
     }
     
-    // Log final course list
-    console.log(`Final course list contains ${filteredCourses.length} courses`);
+    // Log final course list (these are the available non-taken courses that meet prerequisites)
+    console.log(`Final list of available non-taken courses (미이수 가능 과목): ${filteredCourses.length} courses`);
     console.log("Sample courses from final list:");
-    filteredCourses.slice(0, 5).forEach(course => {
-      console.log(`- ${course.course_name} (${course.course_code}), category: ${course.category}`);
+    filteredCourses.slice(0, 10).forEach(course => {
+      console.log(`- ${course.course_name} (${course.course_code}), category: ${course.category}, credit: ${course.credit}`);
     });
     
     if (filteredCourses.length === 0) {
@@ -343,14 +343,14 @@ function timeToMinutes(timeStr: string): number {
 function generateSchedules(courses: Course[], prioritizeNoConflicts = true): Schedule[] {
   const schedules: Schedule[] = [];
   
-  console.log(`Generating schedules from ${courses.length} available courses`);
+  console.log(`Generating schedules from ${courses.length} available non-taken courses (미이수 과목)`);
   
   // Additional details about the course categories being used
   const categoryDistribution: Record<string, number> = {};
   courses.forEach(course => {
     categoryDistribution[course.category] = (categoryDistribution[course.category] || 0) + 1;
   });
-  console.log("Course category distribution:", categoryDistribution);
+  console.log("미이수 과목 카테고리 분포:", categoryDistribution);
   
   // ALWAYS strictly check for time conflicts to ensure no overlaps
   
