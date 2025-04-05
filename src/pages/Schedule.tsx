@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState, useEffect } from "react";
 import { useSchedule } from "@/hooks/useSchedule";
 import Footer from "@/components/layout/Footer";
@@ -13,7 +14,7 @@ import { AlertDialog, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import AvailableCoursesDialog from "@/components/schedule/AvailableCoursesDialog";
 import SaveScheduleDialog from "@/components/schedule/SaveScheduleDialog";
 import ShareScheduleDialog from "@/components/schedule/ShareScheduleDialog";
-import { GraduationCap, BookPlus, Save, Share } from "lucide-react";
+import { GraduationCap, BookPlus, Save, Share, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import GraduationRequirementsModal from "@/components/dashboard/GraduationRequirementsModal";
 import { TimeConflict } from "@/types/schedule";
@@ -52,23 +53,36 @@ const Schedule = () => {
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [selectedCategories, setSelectedCategories] = useState<string[]>(["전공필수", "전공선택", "전공기초"]);
+  const [isViewOnlyMode, setIsViewOnlyMode] = useState(false);
   const { toast } = useToast();
   
   useEffect(() => {
-    const sharedSchedule = getSharedScheduleFromUrl();
-    if (sharedSchedule && sharedSchedule.length > 0) {
-      if (window.confirm("공유된 시간표를 불러오시겠습니까?")) {
+    // Check if this is a shared schedule view
+    const urlParams = new URLSearchParams(window.location.search);
+    const hasScheduleParam = urlParams.has('schedule');
+    
+    if (hasScheduleParam) {
+      setIsViewOnlyMode(true);
+      const sharedSchedule = getSharedScheduleFromUrl();
+      
+      if (sharedSchedule && sharedSchedule.length > 0) {
         setCourses(sharedSchedule);
         toast({
-          title: "시간표 로드 완료",
-          description: "공유된 시간표를 성공적으로 불러왔습니다."
+          title: "공유된 시간표",
+          description: "현재 공유된 시간표를 보고 있습니다. 수정 및 저장이 불가능합니다."
+        });
+      } else {
+        toast({
+          title: "잘못된 시간표 링크",
+          description: "공유된 시간표 정보를 불러올 수 없습니다.",
+          variant: "destructive"
         });
       }
     }
   }, [setCourses, toast]);
   
   const currentSchedule = {
-    name: "현재 시간표",
+    name: isViewOnlyMode ? "공유된 시간표" : "현재 시간표",
     courses: courses.map(course => ({
       course_id: course.id,
       course_name: course.name,
@@ -134,14 +148,27 @@ const Schedule = () => {
       
       <main className="flex-grow pt-28 pb-16">
         <div className="container mx-auto px-4">
-          <ScheduleHeader 
-            isGeneratingSchedules={isGeneratingSchedules}
-            handleGenerateSchedules={handleGenerateWithCategories}
-            savedSchedules={savedSchedules}
-            selectedSavedSchedule={selectedSavedSchedule}
-            handleViewSchedule={handleViewSchedule}
-            handleViewOtherSchedules={handleViewOtherSchedules}
-          />
+          {isViewOnlyMode ? (
+            <div className="mb-6 flex justify-between items-center">
+              <div>
+                <h2 className="text-2xl font-bold">공유된 시간표</h2>
+                <p className="text-muted-foreground">공유된 시간표는 보기만 가능합니다. 수정 및 저장이 불가능합니다.</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Eye className="h-5 w-5 mr-1 text-muted-foreground" />
+                <span className="text-muted-foreground">보기 전용 모드</span>
+              </div>
+            </div>
+          ) : (
+            <ScheduleHeader 
+              isGeneratingSchedules={isGeneratingSchedules}
+              handleGenerateSchedules={handleGenerateWithCategories}
+              savedSchedules={savedSchedules}
+              selectedSavedSchedule={selectedSavedSchedule}
+              handleViewSchedule={handleViewSchedule}
+              handleViewOtherSchedules={handleViewOtherSchedules}
+            />
+          )}
           
           <div className="animate-fade-in" style={{ animationDelay: "100ms" }}>
             <Card>
@@ -150,48 +177,50 @@ const Schedule = () => {
                   <CardTitle>2024년 1학기 시간표</CardTitle>
                   <CardDescription>총 {consolidatedCourses.length}과목 {totalCredits}학점</CardDescription>
                 </div>
-                <div className="flex gap-3">
-                  <Button 
-                    onClick={() => setIsShareDialogOpen(true)} 
-                    variant="outline"
-                    size="sm"
-                    className="flex gap-2"
-                    disabled={courses.length === 0}
-                  >
-                    <Share size={16} />
-                    시간표 공유
-                  </Button>
-                
-                  <Button 
-                    onClick={() => setIsSaveDialogOpen(true)} 
-                    variant="default"
-                    size="sm"
-                    className="flex gap-2"
-                    disabled={courses.length === 0 || isSavingSchedule}
-                  >
-                    <Save size={16} />
-                    시간표 저장
-                  </Button>
-                  
-                  <GraduationRequirementsModal>
-                    <Button variant="outline" size="sm" className="flex gap-2">
-                      <GraduationCap size={16} />
-                      졸업 요건 확인
+                {!isViewOnlyMode ? (
+                  <div className="flex gap-3">
+                    <Button 
+                      onClick={() => setIsShareDialogOpen(true)} 
+                      variant="outline"
+                      size="sm"
+                      className="flex gap-2"
+                      disabled={courses.length === 0}
+                    >
+                      <Share size={16} />
+                      시간표 공유
                     </Button>
-                  </GraduationRequirementsModal>
                   
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
+                    <Button 
+                      onClick={() => setIsSaveDialogOpen(true)} 
+                      variant="default"
+                      size="sm"
+                      className="flex gap-2"
+                      disabled={courses.length === 0 || isSavingSchedule}
+                    >
+                      <Save size={16} />
+                      시간표 저장
+                    </Button>
+                    
+                    <GraduationRequirementsModal>
                       <Button variant="outline" size="sm" className="flex gap-2">
-                        <BookPlus size={16} />
-                        수강 가능한 과목 추가
+                        <GraduationCap size={16} />
+                        졸업 요건 확인
                       </Button>
-                    </AlertDialogTrigger>
-                    <AvailableCoursesDialog 
-                      onAddCourse={handleAddCourse}
-                    />
-                  </AlertDialog>
-                </div>
+                    </GraduationRequirementsModal>
+                    
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="outline" size="sm" className="flex gap-2">
+                          <BookPlus size={16} />
+                          수강 가능한 과목 추가
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AvailableCoursesDialog 
+                        onAddCourse={handleAddCourse}
+                      />
+                    </AlertDialog>
+                  </div>
+                ) : null}
               </CardHeader>
               <CardContent>
                 <TimeConflictWarning conflicts={timeConflicts} />
@@ -205,7 +234,8 @@ const Schedule = () => {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <ScheduleView 
                       courses={consolidatedCourses}
-                      onDeleteCourse={handleDeleteCourse}
+                      onDeleteCourse={isViewOnlyMode ? undefined : handleDeleteCourse}
+                      readOnly={isViewOnlyMode}
                     />
                   </div>
                 </div>
@@ -217,42 +247,46 @@ const Schedule = () => {
       
       <Footer />
       
-      <GeneratedSchedulesDialog
-        isOpen={isScheduleDialogOpen}
-        onOpenChange={setIsScheduleDialogOpen}
-        generatedSchedules={generatedSchedules}
-        isGeneratingSchedules={isGeneratingSchedules}
-        onApplySchedule={handleApplyAndShowSaved}
-      />
-      
-      <SavedSchedulesDialog
-        isOpen={isViewingSchedules}
-        onOpenChange={setIsViewingSchedules}
-        savedSchedules={savedSchedules}
-        onApplySchedule={applySchedule}
-        onSelectSchedule={setSelectedSavedSchedule}
-        onDeleteSchedule={handleDeleteSchedule}
-        isDeletingSchedule={isDeletingSchedule}
-      />
-      
-      <SaveScheduleDialog
-        isOpen={isSaveDialogOpen}
-        onOpenChange={setIsSaveDialogOpen}
-        onSave={handleSaveSchedule}
-        isSaving={isSavingSchedule}
-      />
-      
-      <CategorySelectionModal
-        isOpen={isCategoryModalOpen}
-        onOpenChange={setIsCategoryModalOpen}
-        onSelectCategories={handleCategoriesSelected}
-      />
-      
-      <ShareScheduleDialog
-        isOpen={isShareDialogOpen}
-        onOpenChange={setIsShareDialogOpen}
-        courses={courses}
-      />
+      {!isViewOnlyMode && (
+        <>
+          <GeneratedSchedulesDialog
+            isOpen={isScheduleDialogOpen}
+            onOpenChange={setIsScheduleDialogOpen}
+            generatedSchedules={generatedSchedules}
+            isGeneratingSchedules={isGeneratingSchedules}
+            onApplySchedule={handleApplyAndShowSaved}
+          />
+          
+          <SavedSchedulesDialog
+            isOpen={isViewingSchedules}
+            onOpenChange={setIsViewingSchedules}
+            savedSchedules={savedSchedules}
+            onApplySchedule={applySchedule}
+            onSelectSchedule={setSelectedSavedSchedule}
+            onDeleteSchedule={handleDeleteSchedule}
+            isDeletingSchedule={isDeletingSchedule}
+          />
+          
+          <SaveScheduleDialog
+            isOpen={isSaveDialogOpen}
+            onOpenChange={setIsSaveDialogOpen}
+            onSave={handleSaveSchedule}
+            isSaving={isSavingSchedule}
+          />
+          
+          <CategorySelectionModal
+            isOpen={isCategoryModalOpen}
+            onOpenChange={setIsCategoryModalOpen}
+            onSelectCategories={handleCategoriesSelected}
+          />
+          
+          <ShareScheduleDialog
+            isOpen={isShareDialogOpen}
+            onOpenChange={setIsShareDialogOpen}
+            courses={courses}
+          />
+        </>
+      )}
     </div>
   );
 };
