@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2, Calendar } from "lucide-react";
@@ -9,7 +8,7 @@ import {
   SelectTrigger,
   SelectValue
 } from "@/components/ui/select";
-import { SavedSchedule } from "@/hooks/useSchedule";
+import { SavedSchedule } from "@/types/schedule";
 
 interface ScheduleHeaderProps {
   isGeneratingSchedules: boolean;

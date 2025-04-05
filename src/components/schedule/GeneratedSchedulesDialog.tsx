@@ -5,31 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
 import ScheduleVisualizer from "./ScheduleVisualizer";
-
-interface GeneratedSchedule {
-  name: string;
-  태그?: string[];
-  과목들?: {
-    course_id: string;
-    과목_이름: string;
-    학수번호: string;
-    학점: number;
-    강의_시간: string;
-    강의실: string;
-  }[];
-  courses?: {
-    course_id: string;
-    course_name: string;
-    course_code: string;
-    credit: number;
-    schedule_time: string;
-    classroom: string;
-  }[];
-  총_학점?: number;
-  total_credits?: number;
-  설명?: string;
-  description?: string;
-}
+import { GeneratedSchedule } from "@/types/schedule";
 
 interface GeneratedSchedulesDialogProps {
   isOpen: boolean;

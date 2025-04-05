@@ -5,10 +5,14 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { v4 as uuidv4 } from "uuid";
 import { Json } from "@/integrations/supabase/types";
-import { ScheduleCourse, GeneratedSchedule, SavedSchedule, ConsolidatedCourse, CourseData } from "@/types/schedule";
+import { 
+  ScheduleCourse, 
+  GeneratedSchedule, 
+  SavedSchedule, 
+  ConsolidatedCourse, 
+  CourseData 
+} from "@/types/schedule";
 import { parseScheduleTime, formatScheduleTime, getKoreanDayAbbreviation } from "@/utils/scheduleUtils";
-
-export { parseScheduleTime } from "@/utils/scheduleUtils";
 
 export const useSchedule = () => {
   const [courses, setCourses] = useState<ScheduleCourse[]>([]);
@@ -209,13 +213,18 @@ export const useSchedule = () => {
     console.log("Courses to process:", coursesList);
     
     coursesList.forEach(course => {
-      const courseName = "과목_이름" in course ? course.과목_이름 : course.course_name;
-      const courseCode = "학수번호" in course ? course.학수번호 : course.course_code;
-      const credit = "학점" in course ? course.학점 : course.credit;
-      const scheduleTime = "강의_시간" in course ? course.강의_시간 : course.schedule_time;
-      const classroom = "강의실" in course ? course.강의실 : course.classroom || "미정";
+      const courseName = "과목_이름" in course && course.과목_이름 ? course.과목_이름 : 
+                        "course_name" in course && course.course_name ? course.course_name : "";
+      const courseCode = "학수번호" in course && course.학수번호 ? course.학수번호 : 
+                        "course_code" in course && course.course_code ? course.course_code : "";
+      const credit = "학점" in course && course.학점 ? course.학점 : 
+                    "credit" in course && course.credit ? course.credit : 0;
+      const scheduleTime = "강의_시간" in course && course.강의_시간 ? course.강의_시간 : 
+                          "schedule_time" in course && course.schedule_time ? course.schedule_time : "";
+      const classroom = "강의실" in course && course.강의실 ? course.강의실 : 
+                       "classroom" in course && course.classroom ? course.classroom : "미정";
       
-      if (!courseName || !courseCode || !credit || !scheduleTime) {
+      if (!courseName || !courseCode || !scheduleTime) {
         console.error("Missing required course data:", course);
         return;
       }
