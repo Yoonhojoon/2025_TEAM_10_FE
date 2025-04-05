@@ -9,6 +9,7 @@ interface AuthContextType {
   session: Session | null;
   isLoading: boolean;
   signOut: () => Promise<void>;
+  refreshUser: () => Promise<void>; // Add refreshUser function
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -17,6 +18,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Add refresh user function to get latest user data
+  const refreshUser = async () => {
+    const { data: { user: refreshedUser } } = await supabase.auth.getUser();
+    setUser(refreshedUser);
+    return;
+  };
 
   useEffect(() => {
     // 초기 인증 상태 확인
@@ -53,7 +61,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
   
   return (
-    <AuthContext.Provider value={{ user, session, isLoading, signOut }}>
+    <AuthContext.Provider value={{ user, session, isLoading, signOut, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,3 +1,4 @@
+
 import { Home, Calendar, GraduationCap, BarChart2, Menu, Settings } from "lucide-react";
 import { Link, NavLink as RouterNavLink } from "react-router-dom";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -46,7 +47,7 @@ const MobileNavLink = ({ to, text, icon }: MobileNavLinkProps) => (
 );
 
 const Header = () => {
-  const { signOut, isLoggedIn } = useAuth();
+  const { signOut, user } = useAuth();
   
   return (
     <header className="fixed w-full backdrop-blur-md bg-background/80 z-40 border-b">
@@ -62,7 +63,7 @@ const Header = () => {
             <NavLink to="/settings" text="설정" />
           </div>
           
-          {!isLoggedIn ? (
+          {!user ? (
             <div className="hidden md:flex items-center space-x-2">
               <Link to="/auth">
                 <Button variant="outline" size="sm">
@@ -91,7 +92,7 @@ const Header = () => {
                 <MobileNavLink to="/dashboard" text="대시보드" icon={<BarChart2 size={18} />} />
                 <MobileNavLink to="/settings" text="설정" icon={<Settings size={18} />} />
                 
-                {!isLoggedIn ? (
+                {!user ? (
                   <>
                     <Link to="/auth">
                       <Button variant="outline" className="w-full justify-start" size="sm">

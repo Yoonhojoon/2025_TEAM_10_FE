@@ -10,6 +10,7 @@ import { CircularProgress } from "@/components/common/CircularProgress";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/common/Card";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
 
 interface ProgressData {
   overall: number;
@@ -47,6 +48,7 @@ interface ProgressData {
 const Dashboard = () => {
   const [profileComplete, setProfileComplete] = useState(true);
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [progressData, setProgressData] = useState<ProgressData>({
     overall: 0,
     majorRequired: 0,

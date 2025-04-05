@@ -196,7 +196,7 @@ const Settings = () => {
                   
                   <Button 
                     onClick={handleSaveSettings} 
-                    isLoading={isSaving}
+                    loading={isSaving}
                     size="lg"
                     icon={<Save size={18} />}
                   >
