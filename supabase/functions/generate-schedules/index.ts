@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 
@@ -31,6 +30,11 @@ interface Schedule {
   설명: string;
 }
 
+interface Prerequisite {
+  course_id: string;
+  prerequisite_course_id: string;
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -43,7 +47,7 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
-    const { userId, takenCourseIds, categories = ["전공필수", "전공선택", "전공기초"], courseOverlapCheckPriority = true } = await req.json();
+    const { userId, takenCourseIds, categories = ["전공필수", "전공선택", "전공기초"], courseOverlapCheckPriority = true, enrolledCourseIds = [] } = await req.json();
     
     if (!userId) {
       return new Response(
@@ -102,22 +106,58 @@ serve(async (req) => {
       );
     }
     
+    // Fetch all prerequisites
+    const { data: prerequisites, error: prerequisitesError } = await supabase
+      .from('prerequisites')
+      .select('*');
+    
+    if (prerequisitesError) {
+      console.log('Error fetching prerequisites:', prerequisitesError.message);
+      // Continue without prerequisites check if there's an error
+    }
+    
     // Filter out courses that the user has already taken
-    const filteredCourses = availableCourses.filter(course => 
+    let filteredCourses = availableCourses.filter(course => 
       !takenCourseIds.includes(course.course_id)
     );
+    
+    // Filter out courses where prerequisites haven't been met
+    if (prerequisites) {
+      // Create lookup table for prerequisites
+      const coursePrerequisites: Record<string, string[]> = {};
+      prerequisites.forEach((prereq: Prerequisite) => {
+        if (!coursePrerequisites[prereq.course_id]) {
+          coursePrerequisites[prereq.course_id] = [];
+        }
+        coursePrerequisites[prereq.course_id].push(prereq.prerequisite_course_id);
+      });
+      
+      // Filter courses based on prerequisites
+      filteredCourses = filteredCourses.filter(course => {
+        const prereqs = coursePrerequisites[course.course_id];
+        if (!prereqs || prereqs.length === 0) {
+          // No prerequisites for this course
+          return true;
+        }
+        
+        // Check if all prerequisites are in user's enrolled courses
+        return prereqs.every(prereqId => 
+          enrolledCourseIds.includes(prereqId)
+        );
+      });
+    }
     
     if (filteredCourses.length === 0) {
       return new Response(
         JSON.stringify({ 
-          message: '수강 가능한 과목이 없습니다. 모든 과목을 이미 수강했거나, 다른 카테고리를 선택해보세요.',
+          message: '수강 가능한 과목이 없습니다. 모든 과목을 이미 수강했거나, 선수과목을 이수하지 않았거나, 다른 카테고리를 선택해보세요.',
           schedules: []
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
     
-    // Generate schedules using simple algorithm
+    // Generate schedules using simple algorithm with strict time conflict checking
     const schedules = generateSchedules(filteredCourses, courseOverlapCheckPriority);
     
     return new Response(
@@ -214,23 +254,23 @@ function timeToMinutes(timeStr: string): number {
 function generateSchedules(courses: Course[], prioritizeNoConflicts = true): Schedule[] {
   const schedules: Schedule[] = [];
   
-  // Let's create 3 schedules with different approaches
+  // ALWAYS strictly check for time conflicts to ensure no overlaps
   
   // Schedule 1: Maximize credits while avoiding conflicts
   const creditSortedCourses = [...courses].sort((a, b) => b.credit - a.credit);
-  const schedule1 = createSchedule(creditSortedCourses, "최대 학점 시간표", prioritizeNoConflicts);
+  const schedule1 = createSchedule(creditSortedCourses, "최대 학점 시간표", true);
   if (schedule1.과목들.length > 0) schedules.push(schedule1);
   
   // Schedule 2: Balanced (alternate selecting different categories)
   const categoryCourses = groupByCategory(courses);
-  const schedule2 = createBalancedSchedule(categoryCourses, "균형 잡힌 시간표", prioritizeNoConflicts);
+  const schedule2 = createBalancedSchedule(categoryCourses, "균형 잡힌 시간표", true);
   if (schedule2.과목들.length > 0) schedules.push(schedule2);
   
   // Schedule 3: Random selection with preference to earlier classes
   const timeSortedCourses = [...courses].sort((a, b) => 
     a.schedule_time.localeCompare(b.schedule_time)
   );
-  const schedule3 = createSchedule(timeSortedCourses, "이른 시간 선호 시간표", prioritizeNoConflicts);
+  const schedule3 = createSchedule(timeSortedCourses, "이른 시간 선호 시간표", true);
   if (schedule3.과목들.length > 0) schedules.push(schedule3);
   
   return schedules;
@@ -251,7 +291,7 @@ function groupByCategory(courses: Course[]): Record<string, Course[]> {
 }
 
 // Create a balanced schedule by picking from different categories
-function createBalancedSchedule(categoryCourses: Record<string, Course[]>, name: string): Schedule {
+function createBalancedSchedule(categoryCourses: Record<string, Course[]>, name: string, strictTimeCheck = true): Schedule {
   const selectedCourses: Course[] = [];
   const courseIds = new Set<string>();
   
@@ -276,7 +316,7 @@ function createBalancedSchedule(categoryCourses: Record<string, Course[]>, name:
         // Skip if we've already included this course
         if (courseIds.has(course.course_id)) continue;
         
-        // Check for conflicts
+        // Check for conflicts - ALWAYS strict check
         const hasConflict = selectedCourses.some(selectedCourse => 
           hasTimeConflict(selectedCourse, course)
         );
@@ -310,13 +350,13 @@ function createBalancedSchedule(categoryCourses: Record<string, Course[]>, name:
 }
 
 // Create a schedule from a sorted list
-function createSchedule(sortedCourses: Course[], name: string): Schedule {
+function createSchedule(sortedCourses: Course[], name: string, strictTimeCheck = true): Schedule {
   const selectedCourses: Course[] = [];
   let totalCredits = 0;
   const MAX_CREDITS = 18;
   
   for (const course of sortedCourses) {
-    // Check for conflicts
+    // ALWAYS strictly check for conflicts to ensure no overlaps
     const hasConflict = selectedCourses.some(selectedCourse => 
       hasTimeConflict(selectedCourse, course)
     );

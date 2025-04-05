@@ -1,9 +1,12 @@
+
 import React, { useState } from "react";
 import { Button } from "@/components/common/Button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/common/Card";
 import { AlertCircle, Clock, Eye, Save, Trash2 } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/components/auth/AuthProvider";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ScheduleCourse {
   id: string;
@@ -33,7 +36,7 @@ const dayLabels = {
 
 interface SchedulePlannerProps {
   courses: ScheduleCourse[];
-  onAddCourse: (course: Omit<ScheduleCourse, "id">) => void;
+  onAddCourse: (course: Omit<ScheduleCourse, "id">) => Promise<boolean>;
   onDeleteCourse: (id: string) => void;
   onViewOtherSchedules?: () => void;
 }
@@ -58,7 +61,9 @@ const SchedulePlanner = ({
     location: "",
     credit: 3
   });
+  const [isCheckingPrerequisites, setIsCheckingPrerequisites] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -68,7 +73,7 @@ const SchedulePlanner = ({
     }));
   };
   
-  const handleAddCourse = () => {
+  const handleAddCourse = async () => {
     const timeConflict = hasTimeConflict(newCourse.startTime, newCourse.endTime, newCourse.day);
     const creditOverload = wouldExceedCreditLimit(newCourse.credit);
     const courseOverload = wouldExceedDailyCourseLimit(newCourse.day);
@@ -100,22 +105,31 @@ const SchedulePlanner = ({
       return;
     }
     
-    onAddCourse(newCourse);
-    setNewCourse({
-      name: "",
-      code: "",
-      day: "mon",
-      startTime: "09:00",
-      endTime: "10:00",
-      location: "",
-      credit: 3
-    });
-    setIsAdding(false);
+    setIsCheckingPrerequisites(true);
     
-    toast({
-      title: "과목 추가 완료",
-      description: `${newCourse.name} 과목이 시간표에 추가되었습니다.`
-    });
+    try {
+      const success = await onAddCourse(newCourse);
+      
+      if (success) {
+        setNewCourse({
+          name: "",
+          code: "",
+          day: "mon",
+          startTime: "09:00",
+          endTime: "10:00",
+          location: "",
+          credit: 3
+        });
+        setIsAdding(false);
+        
+        toast({
+          title: "과목 추가 완료",
+          description: `${newCourse.name} 과목이 시간표에 추가되었습니다.`
+        });
+      }
+    } finally {
+      setIsCheckingPrerequisites(false);
+    }
   };
   
   const getTimeSlotPosition = (time: string) => {
@@ -369,9 +383,16 @@ const SchedulePlanner = ({
               </Button>
               <Button 
                 onClick={handleAddCourse} 
-                disabled={timeConflict || creditOverload || courseOverload || !newCourse.name || !newCourse.code}
+                disabled={
+                  isCheckingPrerequisites || 
+                  timeConflict || 
+                  creditOverload || 
+                  courseOverload || 
+                  !newCourse.name || 
+                  !newCourse.code
+                }
               >
-                추가
+                {isCheckingPrerequisites ? "확인 중..." : "추가"}
               </Button>
             </div>
           </div>
@@ -466,7 +487,15 @@ const SchedulePlanner = ({
                 </div>
               </div>
             ))}
-            {courses.length === 0 && (
+            {!isAdding && courses.length < 10 && (
+              <button
+                onClick={() => setIsAdding(true)}
+                className="p-6 border border-dashed rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors"
+              >
+                + 과목 추가하기
+              </button>
+            )}
+            {courses.length === 0 && !isAdding && (
               <div className="md:col-span-3 p-6 text-center text-muted-foreground border rounded-lg">
                 아직 등록된 과목이 없습니다. 과목을 추가해주세요.
               </div>

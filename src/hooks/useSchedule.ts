@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useToast } from "@/hooks/use-toast";
@@ -23,6 +24,7 @@ export const useSchedule = () => {
   const [selectedSavedSchedule, setSelectedSavedSchedule] = useState<string | null>(null);
   const [isSavingSchedule, setIsSavingSchedule] = useState(false);
   const [isDeletingSchedule, setIsDeletingSchedule] = useState(false);
+  const [enrolledCourseIds, setEnrolledCourseIds] = useState<string[]>([]);
   
   const { user } = useAuth();
   const { toast } = useToast();
@@ -62,16 +64,96 @@ export const useSchedule = () => {
     };
     
     fetchSavedSchedules();
+    fetchEnrolledCourses();
   }, [user, toast]);
   
-  const handleAddCourse = (course: Omit<ScheduleCourse, "id">) => {
-    if (!user) {
-      toast({
-        title: "로그인 필요",
-        description: "과목 추가를 위해 로그인이 필요합니다.",
-        variant: "destructive"
-      });
-      return false;
+  const fetchEnrolledCourses = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('enrollments')
+        .select('course_id')
+        .eq('user_id', user.id);
+        
+      if (error) {
+        throw error;
+      }
+      
+      if (data) {
+        setEnrolledCourseIds(data.map(item => item.course_id));
+        console.log('Fetched enrolled course IDs:', data.map(item => item.course_id));
+      }
+    } catch (error) {
+      console.error('Error fetching enrolled courses:', error);
+    }
+  };
+  
+  const checkPrerequisites = async (courseCode: string) => {
+    try {
+      // First get the course_id from the course code
+      const { data: courseData, error: courseError } = await supabase
+        .from('courses')
+        .select('course_id')
+        .eq('course_code', courseCode)
+        .single();
+        
+      if (courseError || !courseData) {
+        console.error('Error fetching course ID:', courseError);
+        return { hasAllPrerequisites: true, missingPrerequisites: [] };
+      }
+      
+      // Now get the prerequisites for this course
+      const { data: prerequisites, error: prereqError } = await supabase
+        .from('prerequisites')
+        .select(`
+          prerequisite_course_id,
+          courses:prerequisite_course_id (
+            course_name,
+            course_code
+          )
+        `)
+        .eq('course_id', courseData.course_id);
+        
+      if (prereqError) {
+        console.error('Error fetching prerequisites:', prereqError);
+        return { hasAllPrerequisites: true, missingPrerequisites: [] };
+      }
+      
+      if (!prerequisites || prerequisites.length === 0) {
+        // No prerequisites for this course
+        return { hasAllPrerequisites: true, missingPrerequisites: [] };
+      }
+      
+      // Check if the user has taken all prerequisites
+      const missingPrerequisites = prerequisites.filter(
+        prereq => !enrolledCourseIds.includes(prereq.prerequisite_course_id)
+      ).map(prereq => prereq.courses);
+      
+      return {
+        hasAllPrerequisites: missingPrerequisites.length === 0,
+        missingPrerequisites
+      };
+    } catch (error) {
+      console.error('Error checking prerequisites:', error);
+      return { hasAllPrerequisites: true, missingPrerequisites: [] };
+    }
+  };
+  
+  const handleAddCourse = async (course: Omit<ScheduleCourse, "id">) => {
+    if (user) {
+      const { hasAllPrerequisites, missingPrerequisites } = await checkPrerequisites(course.code);
+      
+      if (!hasAllPrerequisites && missingPrerequisites.length > 0) {
+        const missingCourseNames = missingPrerequisites.map(c => `${c.course_name} (${c.course_code})`).join(', ');
+        
+        toast({
+          title: "선수과목 미이수",
+          description: `이 과목을 수강하기 위해서는 다음 선수과목을 이수해야 합니다: ${missingCourseNames}`,
+          variant: "destructive"
+        });
+        return false;
+      }
     }
     
     const courseExists = courses.some(existingCourse => existingCourse.code === course.code);
@@ -182,7 +264,8 @@ export const useSchedule = () => {
           userId: user.id,
           takenCourseIds,
           categories: courseCategories,
-          courseOverlapCheckPriority: true
+          courseOverlapCheckPriority: true,
+          enrolledCourseIds // Pass enrolled course IDs to check prerequisites
         }
       });
       
@@ -464,6 +547,7 @@ export const useSchedule = () => {
     selectedSavedSchedule,
     isSavingSchedule,
     isDeletingSchedule,
+    enrolledCourseIds,
     setIsScheduleDialogOpen,
     setIsViewingSchedules,
     setSelectedSavedSchedule,
@@ -475,6 +559,7 @@ export const useSchedule = () => {
     handleViewOtherSchedules,
     handleSaveSchedule,
     handleDeleteSchedule,
-    setCourses
+    setCourses,
+    checkPrerequisites
   };
 };
