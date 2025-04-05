@@ -25,7 +25,7 @@ export const encodeScheduleToBase64 = (courses: ScheduleCourse[]): string => {
     });
 
     // URL에서 안전하게 사용할 수 있는 Base64 인코딩 (URL-safe Base64)
-    return btoa(jsonData)
+    return btoa(encodeURIComponent(jsonData))
       .replace(/\+/g, '-')
       .replace(/\//g, '_')
       .replace(/=+$/, '');
@@ -46,7 +46,7 @@ export const decodeScheduleFromBase64 = (encodedString: string): ScheduleCourse[
       .replace(/_/g, '/');
     
     // Base64 디코딩 후 JSON 파싱
-    const jsonData = atob(base64);
+    const jsonData = decodeURIComponent(atob(base64));
     const parsedData = JSON.parse(jsonData);
     
     if (!parsedData.courses || !Array.isArray(parsedData.courses)) {

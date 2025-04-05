@@ -201,6 +201,36 @@ export type Database = {
         }
         Relationships: []
       }
+      temp_courses_with_names: {
+        Row: {
+          category: string | null
+          classroom: string | null
+          course_code: string | null
+          course_name: string | null
+          credit: number | null
+          department_name: string | null
+          schedule_time: string | null
+        }
+        Insert: {
+          category?: string | null
+          classroom?: string | null
+          course_code?: string | null
+          course_name?: string | null
+          credit?: number | null
+          department_name?: string | null
+          schedule_time?: string | null
+        }
+        Update: {
+          category?: string | null
+          classroom?: string | null
+          course_code?: string | null
+          course_name?: string | null
+          credit?: number | null
+          department_name?: string | null
+          schedule_time?: string | null
+        }
+        Relationships: []
+      }
       users: {
         Row: {
           created_at: string | null

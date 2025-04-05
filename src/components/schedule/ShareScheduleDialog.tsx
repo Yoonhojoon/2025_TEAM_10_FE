@@ -62,7 +62,7 @@ const ShareScheduleDialog: React.FC<ShareScheduleDialogProps> = ({
   };
   
   // Generate QR code URL using simple API
-  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(shareUrl)}`;
+  const qrCodeUrl = shareUrl ? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(shareUrl)}` : "";
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
