@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 
@@ -21,7 +22,7 @@ interface Schedule {
   과목들: Array<{
     course_id: string;
     과목_이름: string;
-    학수번��: string;
+    학수번호: string;
     학점: number;
     강의_시간: string;
     강의실: string;
@@ -61,21 +62,9 @@ serve(async (req) => {
     
     // Log what courses are marked as taken/enrolled
     console.log("User ID:", userId);
-    console.log("Courses marked as enrolled/taken (IDs):", enrolledCourseIds);
+    console.log("Courses marked as enrolled (IDs):", enrolledCourseIds);
     console.log("Categories for course search:", categories);
     
-    // Get detailed info about taken courses
-    if (enrolledCourseIds && enrolledCourseIds.length > 0) {
-      const { data: enrolledCoursesDetails, error: enrolledCoursesError } = await supabase
-        .from('courses')
-        .select('course_id, course_name, course_code, category')
-        .in('course_id', enrolledCourseIds);
-        
-      if (!enrolledCoursesError && enrolledCoursesDetails) {
-        console.log("Detailed information about enrolled/taken courses:", enrolledCoursesDetails);
-      }
-    }
-
     // Fetch user department
     const { data: userData, error: userError } = await supabase
       .from('users')
@@ -453,7 +442,7 @@ function createBalancedSchedule(categoryCourses: Record<string, Course[]>, name:
     과목들: selectedCourses.map(course => ({
       course_id: course.course_id,
       과목_이름: course.course_name,
-      학수번��: course.course_code,
+      학수번호: course.course_code,
       학점: course.credit,
       강의_시간: course.schedule_time,
       강의실: course.classroom
@@ -490,7 +479,7 @@ function createSchedule(sortedCourses: Course[], name: string, strictTimeCheck =
     과목들: selectedCourses.map(course => ({
       course_id: course.course_id,
       과목_이름: course.course_name,
-      학수번��: course.course_code,
+      학수번호: course.course_code,
       학점: course.credit,
       강의_시간: course.schedule_time,
       강의실: course.classroom

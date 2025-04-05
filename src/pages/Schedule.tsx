@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState, useEffect } from "react";
 import { useSchedule } from "@/hooks/useSchedule";
 import Footer from "@/components/layout/Footer";
@@ -230,7 +229,7 @@ const Schedule = () => {
         enrolledCourseIds,
         selectedCategories,
         currentScheduleCourses: {
-          count: this.courses?.length || 0,
+          count: courses ? courses.length : 0,
           ids: currentCourseIds
         }
       };
