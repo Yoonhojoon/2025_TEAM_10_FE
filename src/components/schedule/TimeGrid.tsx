@@ -14,9 +14,9 @@ const TimeGrid: React.FC<TimeGridProps> = ({ children }) => {
   const days = ["mon", "tue", "wed", "thu", "fri"];
   
   return (
-    <div className="min-w-[800px] border rounded-lg bg-secondary/30 overflow-hidden">
+    <div className="min-w-[800px] border rounded-lg bg-secondary/30 overflow-hidden shadow-sm">
       {/* Header row with day names */}
-      <div className="grid grid-cols-6 border-b">
+      <div className="grid grid-cols-6 border-b bg-background/60">
         <div className="p-2 text-center font-medium"></div>
         {days.map(day => (
           <div key={day} className="p-2 text-center font-medium border-l">
