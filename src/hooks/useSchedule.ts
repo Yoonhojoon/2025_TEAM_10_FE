@@ -65,6 +65,15 @@ export const useSchedule = () => {
   }, [user, toast]);
   
   const handleAddCourse = (course: Omit<ScheduleCourse, "id">) => {
+    if (!user) {
+      toast({
+        title: "로그인 필요",
+        description: "과목 추가를 위해 로그인이 필요합니다.",
+        variant: "destructive"
+      });
+      return false;
+    }
+    
     const courseExists = courses.some(existingCourse => existingCourse.code === course.code);
     
     if (courseExists) {
@@ -85,6 +94,15 @@ export const useSchedule = () => {
   };
   
   const handleDeleteCourse = (id: string) => {
+    if (!user) {
+      toast({
+        title: "로그인 필요",
+        description: "과목 삭제를 위해 로그인이 필요합니다.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     setCourses(courses.filter(course => course.id !== id));
   };
   
@@ -163,7 +181,8 @@ export const useSchedule = () => {
         body: {
           userId: user.id,
           takenCourseIds,
-          categories: courseCategories
+          categories: courseCategories,
+          courseOverlapCheckPriority: true
         }
       });
       

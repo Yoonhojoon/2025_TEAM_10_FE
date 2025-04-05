@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState, useEffect } from "react";
 import { useSchedule } from "@/hooks/useSchedule";
 import Footer from "@/components/layout/Footer";
@@ -21,6 +20,7 @@ import { TimeConflict } from "@/types/schedule";
 import CategorySelectionModal from "@/components/schedule/CategorySelectionModal";
 import { getSharedScheduleFromUrl } from "@/utils/shareScheduleUtils";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/components/auth/AuthProvider";
 
 const Schedule = () => {
   const {
@@ -55,6 +55,7 @@ const Schedule = () => {
   const [selectedCategories, setSelectedCategories] = useState<string[]>(["전공필수", "전공선택", "전공기초"]);
   const [isViewOnlyMode, setIsViewOnlyMode] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
   
   useEffect(() => {
     // Check if this is a shared schedule view
@@ -133,6 +134,15 @@ const Schedule = () => {
   };
 
   const handleGenerateWithCategories = async (): Promise<void> => {
+    if (!user) {
+      toast({
+        title: "로그인 필요",
+        description: "시간표 생성을 위해 로그인이 필요합니다.",
+        variant: "destructive"
+      });
+      return Promise.resolve();
+    }
+    
     setIsCategoryModalOpen(true);
     return Promise.resolve();
   };
@@ -141,6 +151,8 @@ const Schedule = () => {
     setSelectedCategories(categories);
     handleGenerateSchedules(categories);
   };
+
+  const canEdit = user && !isViewOnlyMode;
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -177,7 +189,7 @@ const Schedule = () => {
                   <CardTitle>2024년 1학기 시간표</CardTitle>
                   <CardDescription>총 {consolidatedCourses.length}과목 {totalCredits}학점</CardDescription>
                 </div>
-                {!isViewOnlyMode ? (
+                {!isViewOnlyMode && user ? (
                   <div className="flex gap-3">
                     <Button 
                       onClick={() => setIsShareDialogOpen(true)} 
@@ -220,6 +232,10 @@ const Schedule = () => {
                       />
                     </AlertDialog>
                   </div>
+                ) : !isViewOnlyMode ? (
+                  <div>
+                    <p className="text-sm text-muted-foreground">기능을 모두 사용하시려면 로그인하세요</p>
+                  </div>
                 ) : null}
               </CardHeader>
               <CardContent>
@@ -234,8 +250,8 @@ const Schedule = () => {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <ScheduleView 
                       courses={consolidatedCourses}
-                      onDeleteCourse={isViewOnlyMode ? undefined : handleDeleteCourse}
-                      readOnly={isViewOnlyMode}
+                      onDeleteCourse={canEdit ? handleDeleteCourse : undefined}
+                      readOnly={isViewOnlyMode || !user}
                     />
                   </div>
                 </div>
@@ -247,7 +263,7 @@ const Schedule = () => {
       
       <Footer />
       
-      {!isViewOnlyMode && (
+      {user && !isViewOnlyMode && (
         <>
           <GeneratedSchedulesDialog
             isOpen={isScheduleDialogOpen}

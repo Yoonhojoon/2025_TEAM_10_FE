@@ -37,11 +37,7 @@ const App = () => (
                   <Courses />
                 </RequireAuth>
               } />
-              <Route path="/schedule" element={
-                <RequireAuth>
-                  <Schedule />
-                </RequireAuth>
-              } />
+              <Route path="/schedule" element={<Schedule />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AuthProvider>
