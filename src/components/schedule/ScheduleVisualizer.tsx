@@ -1,31 +1,7 @@
 
 import React from "react";
 import { Clock } from "lucide-react";
-
-interface ScheduleCourse {
-  course_id?: string;
-  course_name?: string;
-  course_code?: string;
-  credit?: number;
-  schedule_time?: string;
-  classroom?: string;
-  과목_이름?: string;
-  학수번호?: string;
-  학점?: number;
-  강의_시간?: string;
-  강의실?: string;
-}
-
-interface GeneratedSchedule {
-  name: string;
-  태그?: string[];
-  과목들?: ScheduleCourse[];
-  courses?: ScheduleCourse[];
-  총_학점?: number;
-  total_credits?: number;
-  설명?: string;
-  description?: string;
-}
+import { GeneratedSchedule } from "@/types/schedule";
 
 interface ScheduleVisualizerProps {
   schedule?: GeneratedSchedule;
@@ -103,15 +79,22 @@ const ScheduleVisualizer: React.FC<ScheduleVisualizerProps> = ({ schedule }) => 
   };
   
   // Process courses from the schedule
-  const courses = schedule?.courses || schedule?.과목들 || [];
+  const courseList = schedule?.courses || schedule?.과목들 || [];
   
   // Transform courses for visualization
-  const visualCourses = courses.map(course => {
-    const courseId = course.course_id || Math.random().toString(36).substring(7);
+  const visualCourses = courseList.map(course => {
+    // Handle both English and Korean field names
+    const courseId = course.course_id || "";
     const name = course.course_name || course.과목_이름 || "Unknown";
     const code = course.course_code || course.학수번호 || "Unknown";
     const location = course.classroom || course.강의실 || "";
     const scheduleStr = course.schedule_time || course.강의_시간 || "";
+    
+    console.log("Processing course for visualization:", {
+      name,
+      code,
+      scheduleStr
+    });
     
     return {
       id: courseId,
@@ -120,9 +103,11 @@ const ScheduleVisualizer: React.FC<ScheduleVisualizerProps> = ({ schedule }) => 
       location,
       scheduleParsed: parseCourseSchedule(scheduleStr),
       scheduleStr,
-      color: getCourseColor(code)  // Generate a color for each course based on its code
+      color: getCourseColor(code)
     };
   });
+
+  console.log("Visual courses data:", visualCourses);
 
   return (
     <div className="w-full overflow-auto pb-4">
