@@ -16,7 +16,7 @@ import ShareScheduleDialog from "@/components/schedule/ShareScheduleDialog";
 import { GraduationCap, BookPlus, Save, Share, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import GraduationRequirementsModal from "@/components/dashboard/GraduationRequirementsModal";
-import { TimeConflict, CourseCategory } from "@/types/schedule";
+import { TimeConflict, CourseCategory, PrerequisiteWarning } from "@/types/schedule";
 import CategorySelectionModal from "@/components/schedule/CategorySelectionModal";
 import { getSharedScheduleFromUrl } from "@/utils/shareScheduleUtils";
 import { useToast } from "@/hooks/use-toast";
@@ -48,7 +48,8 @@ const Schedule = () => {
     handleAddCourse,
     handleSaveSchedule,
     handleDeleteSchedule,
-    setCourses
+    setCourses,
+    checkPrerequisites
   } = useSchedule();
   
   const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
@@ -56,6 +57,7 @@ const Schedule = () => {
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [selectedCategories, setSelectedCategories] = useState<CourseCategory[]>(["전공필수", "전공선택", "전공기초"]);
   const [isViewOnlyMode, setIsViewOnlyMode] = useState(false);
+  const [prerequisiteWarnings, setPrerequisiteWarnings] = useState<PrerequisiteWarning[]>([]);
   const { toast } = useToast();
   const { user } = useAuth();
   
@@ -82,6 +84,40 @@ const Schedule = () => {
       }
     }
   }, [setCourses, toast]);
+
+  useEffect(() => {
+    const checkAllPrerequisites = async () => {
+      if (!user || courses.length === 0) {
+        setPrerequisiteWarnings([]);
+        return;
+      }
+
+      const warnings: PrerequisiteWarning[] = [];
+      
+      const uniqueCourseCodes = Array.from(new Set(courses.map(course => course.code)));
+      
+      for (const code of uniqueCourseCodes) {
+        const { hasAllPrerequisites, missingPrerequisites } = await checkPrerequisites(code);
+        
+        if (!hasAllPrerequisites && missingPrerequisites.length > 0) {
+          const course = courses.find(c => c.code === code);
+          if (course) {
+            warnings.push({
+              courseCode: code,
+              courseName: course.name,
+              missingPrerequisites
+            });
+          }
+        }
+      }
+      
+      setPrerequisiteWarnings(warnings);
+    };
+    
+    if (!isViewOnlyMode) {
+      checkAllPrerequisites();
+    }
+  }, [courses, user, checkPrerequisites, isViewOnlyMode]);
   
   const currentSchedule = {
     name: isViewOnlyMode ? "공유된 시간표" : "현재 시간표",
@@ -245,7 +281,10 @@ const Schedule = () => {
                 ) : null}
               </CardHeader>
               <CardContent>
-                <TimeConflictWarning conflicts={timeConflicts} />
+                <TimeConflictWarning 
+                  conflicts={timeConflicts}
+                  prerequisiteWarnings={prerequisiteWarnings}
+                />
                 
                 <div className="mb-6">
                   <ScheduleVisualizer schedule={currentSchedule} />

@@ -64,3 +64,12 @@ export interface ConsolidatedCourse extends ScheduleCourse {
     endTime: string;
   }[];
 }
+
+export interface PrerequisiteWarning {
+  courseCode: string;
+  courseName: string;
+  missingPrerequisites: {
+    course_name: string;
+    course_code: string;
+  }[];
+}
