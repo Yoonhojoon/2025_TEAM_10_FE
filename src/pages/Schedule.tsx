@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState, useEffect } from "react";
 import { useSchedule } from "@/hooks/useSchedule";
 import Footer from "@/components/layout/Footer";
@@ -214,8 +213,8 @@ const Schedule = () => {
       const debugData = {
         userId: user.id,
         userDepartment: {
-          id: deptData.department_id,
-          name: deptData.department_name
+          id: deptData?.department_id || "",
+          name: deptData?.department_name || ""
         },
         takenCourses: {
           count: courses?.length || 0,
@@ -245,7 +244,7 @@ const Schedule = () => {
       // Alert with key information
       alert(
         `디버깅 정보:\n` +
-        `- 사용자 학과: ${deptData.department_name}\n` +
+        `- 사용자 학과: ${deptData?.department_name || "미확인"}\n` +
         `- 수강 완료된 과목 수: ${takenCourseIds.length}\n` +
         `- 현재 수강 중인 과목 수: ${enrolledCourseIds.length}\n` +
         `- 시간표 생성에 사용할 카테고리: ${selectedCategories.join(', ')}\n\n` +
@@ -425,4 +424,3 @@ const Schedule = () => {
 };
 
 export default Schedule;
-

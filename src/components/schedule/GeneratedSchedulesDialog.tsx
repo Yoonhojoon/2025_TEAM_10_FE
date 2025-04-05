@@ -3,9 +3,13 @@ import React, { useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2 } from "lucide-react";
+import { Loader2, Save } from "lucide-react";
 import ScheduleVisualizer from "./ScheduleVisualizer";
 import { GeneratedSchedule } from "@/types/schedule";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/components/auth/AuthProvider";
+import { Json } from "@/integrations/supabase/types";
 
 interface GeneratedSchedulesDialogProps {
   isOpen: boolean;
@@ -23,6 +27,54 @@ const GeneratedSchedulesDialog = ({
   onApplySchedule
 }: GeneratedSchedulesDialogProps) => {
   const [selectedScheduleIndex, setSelectedScheduleIndex] = useState<number | null>(null);
+  const [savingScheduleIndex, setSavingScheduleIndex] = useState<number | null>(null);
+  const { toast } = useToast();
+  const { user } = useAuth();
+  
+  const handleSaveSchedule = async (schedule: GeneratedSchedule, index: number) => {
+    if (!user) {
+      toast({
+        title: "로그인 필요",
+        description: "시간표를 저장하려면 로그인이 필요합니다.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    try {
+      setSavingScheduleIndex(index);
+      
+      const tags = schedule.태그 || [];
+      
+      const { data, error } = await supabase
+        .from('schedules')
+        .insert({
+          user_id: user.id,
+          schedule_json: schedule as unknown as Json,
+          description_tags: tags.length > 0 ? tags : null
+        })
+        .select()
+        .single();
+        
+      if (error) {
+        throw error;
+      }
+      
+      toast({
+        title: "시간표 저장 완료",
+        description: `"${schedule.name}" 시간표가 저장되었습니다.`
+      });
+    } catch (error) {
+      console.error('Error saving schedule:', error);
+      toast({
+        title: "시간표 저장 실패",
+        description: error instanceof Error ? error.message : "시간표를 저장하는데 실패했습니다.",
+        variant: "destructive"
+      });
+    } finally {
+      setSavingScheduleIndex(null);
+    }
+  };
   
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -73,11 +125,37 @@ const GeneratedSchedulesDialog = ({
                       {selectedScheduleIndex === index ? "시간표 닫기" : "시간표 보기"}
                     </Button>
                     
+                    {user && (
+                      <Button
+                        size="default"
+                        variant="outline"
+                        onClick={() => handleSaveSchedule(schedule, index)}
+                        disabled={savingScheduleIndex === index}
+                        className="min-w-[110px]"
+                      >
+                        {savingScheduleIndex === index ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            저장 중...
+                          </>
+                        ) : (
+                          <>
+                            <Save className="h-4 w-4 mr-2" />
+                            저장하기
+                          </>
+                        )}
+                      </Button>
+                    )}
+                    
                     <Button 
                       size="default"
                       onClick={() => {
                         onApplySchedule(schedule);
-                        console.log(`Applying schedule: ${schedule.name}`);
+                        onOpenChange(false);
+                        toast({
+                          title: "시간표 적용 완료",
+                          description: `${schedule.name} 시간표가 적용되었습니다.`
+                        });
                       }}
                       className="min-w-[110px]"
                     >

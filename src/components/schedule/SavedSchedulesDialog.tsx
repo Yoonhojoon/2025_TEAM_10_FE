@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -5,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, Trash2 } from "lucide-react";
 import ScheduleVisualizer from "./ScheduleVisualizer";
 import { GeneratedSchedule, SavedSchedule } from "@/types/schedule";
+import { useToast } from "@/hooks/use-toast";
 
 interface SavedSchedulesDialogProps {
   isOpen: boolean;
@@ -27,11 +29,26 @@ const SavedSchedulesDialog = ({
 }: SavedSchedulesDialogProps) => {
   const [selectedScheduleIndex, setSelectedScheduleIndex] = useState<number | null>(null);
   const [scheduleIdToDelete, setScheduleIdToDelete] = useState<string | null>(null);
+  const { toast } = useToast();
   
   const handleDeleteClick = async (scheduleId: string) => {
-    setScheduleIdToDelete(scheduleId);
-    await onDeleteSchedule(scheduleId);
-    setScheduleIdToDelete(null);
+    try {
+      setScheduleIdToDelete(scheduleId);
+      await onDeleteSchedule(scheduleId);
+      setScheduleIdToDelete(null);
+      toast({
+        title: "시간표 삭제 완료",
+        description: "선택한 시간표가 성공적으로 삭제되었습니다."
+      });
+    } catch (error) {
+      console.error("Error deleting schedule:", error);
+      toast({
+        title: "시간표 삭제 실패",
+        description: "시간표 삭제 중 오류가 발생했습니다.",
+        variant: "destructive"
+      });
+      setScheduleIdToDelete(null);
+    }
   };
   
   return (
@@ -87,6 +104,10 @@ const SavedSchedulesDialog = ({
                         onApplySchedule(schedule.schedule_json);
                         onSelectSchedule(schedule.schedule_id);
                         onOpenChange(false);
+                        toast({
+                          title: "시간표 적용 완료",
+                          description: `${schedule.schedule_json.name} 시간표가 적용되었습니다.`
+                        });
                       }}
                       className="min-w-[110px]"
                     >
