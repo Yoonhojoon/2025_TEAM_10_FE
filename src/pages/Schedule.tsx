@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState } from "react";
 import { useSchedule } from "@/hooks/useSchedule";
 import Footer from "@/components/layout/Footer";
@@ -101,8 +102,11 @@ const Schedule = () => {
     setIsScheduleDialogOpen(false);
   };
 
-  const handleGenerateWithCategories = () => {
+  // Modified function to return Promise<void>
+  const handleGenerateWithCategories = async (): Promise<void> => {
     setIsCategoryModalOpen(true);
+    // Return a resolved promise to satisfy the type requirement
+    return Promise.resolve();
   };
 
   const handleCategoriesSelected = (categories: string[]) => {
