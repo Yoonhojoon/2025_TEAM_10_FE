@@ -60,9 +60,6 @@ const ShareScheduleDialog: React.FC<ShareScheduleDialogProps> = ({
       });
     }
   };
-  
-  // Generate QR code URL using simple API
-  const qrCodeUrl = shareUrl ? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(shareUrl)}` : "";
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -91,21 +88,6 @@ const ShareScheduleDialog: React.FC<ShareScheduleDialogProps> = ({
               {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
             </Button>
           </div>
-          
-          {shareUrl && (
-            <div className="flex flex-col items-center space-y-2">
-              <p className="text-sm text-muted-foreground">스캔하여 공유</p>
-              <div className="bg-white p-2 rounded-lg">
-                <img 
-                  src={qrCodeUrl}
-                  alt="QR Code"
-                  width={150}
-                  height={150}
-                  className="rounded"
-                />
-              </div>
-            </div>
-          )}
           
           <div className="flex justify-end">
             <Button 
