@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
@@ -200,7 +199,7 @@ const Settings = () => {
                     size="lg"
                     icon={<Save size={18} />}
                   >
-                    설정 저장
+                    저장하기
                   </Button>
                 </CardContent>
               </Card>
