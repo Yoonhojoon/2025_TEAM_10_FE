@@ -5,6 +5,7 @@ export interface Course {
   name: string;
   category: "majorRequired" | "majorElective" | "majorBasic" | "generalRequired" | "generalElective" | "industryRequired" | "basicGeneral";
   credit: number;
+  grade?: number; // Added grade field
 }
 
 export interface DbCourse {
@@ -16,4 +17,5 @@ export interface DbCourse {
   department_id: string;
   schedule_time: string;
   classroom: string | null;
+  grade: number | null; // Added grade field
 }

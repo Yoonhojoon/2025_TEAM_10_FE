@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/common/Button";
 import ProgressDashboard from "@/components/dashboard/ProgressDashboard";
 import Header from "@/components/layout/Header";
@@ -359,6 +358,7 @@ const Dashboard = () => {
               <Button 
                 variant="outline" 
                 icon={<Settings size={18} />}
+                onClick={() => navigate('/settings')}
               >
                 설정
               </Button>

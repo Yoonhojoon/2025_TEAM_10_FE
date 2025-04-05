@@ -1,167 +1,168 @@
-
-import { Button } from "@/components/common/Button";
-import { cn } from "@/lib/utils";
-import { BookOpenCheck, GraduationCap, LogOut, Menu, X } from "lucide-react";
-import { useState, useEffect } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Home, Calendar, GraduationCap, BarChart2, Menu, Settings } from "lucide-react";
+import { Link, NavLink as RouterNavLink } from "react-router-dom";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
-const navItems = [
-  { name: "대시보드", path: "/dashboard" },
-  { name: "수강 기록", path: "/courses" },
-  { name: "시간표 계획", path: "/schedule" },
-];
+const Logo = () => (
+  <Link to="/" className="flex items-center space-x-2 font-bold">
+    <GraduationCap className="h-6 w-6 text-primary" />
+    <span>KUBS Scheduler</span>
+  </Link>
+);
+
+interface NavLinkProps {
+  to: string;
+  text: string;
+}
+
+const NavLink = ({ to, text }: NavLinkProps) => (
+  <RouterNavLink
+    to={to}
+    className={({ isActive }) =>
+      `text-sm font-medium py-2 px-3 rounded-md transition-colors hover:bg-secondary/50 ${
+        isActive ? "bg-secondary/50 text-primary" : "text-muted-foreground"
+      }`
+    }
+  >
+    {text}
+  </RouterNavLink>
+);
+
+interface MobileNavLinkProps {
+  to: string;
+  text: string;
+  icon: React.ReactNode;
+}
+
+const MobileNavLink = ({ to, text, icon }: MobileNavLinkProps) => (
+  <Link
+    to={to}
+    className="flex items-center space-x-2 py-2 px-4 rounded-md transition-colors hover:bg-secondary/50"
+  >
+    {icon}
+    <span>{text}</span>
+  </Link>
+);
 
 const Header = () => {
-  const [isScrolled, setIsScrolled] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const location = useLocation();
-  const navigate = useNavigate();
-  const { user, signOut } = useAuth();
-  
-  const isLandingPage = location.pathname === "/";
-  
-  useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 10);
-    };
-    
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-  
-  useEffect(() => {
-    setMobileMenuOpen(false);
-  }, [location.pathname]);
-  
-  const handleLogout = async () => {
-    try {
-      await signOut();
-      navigate("/auth");
-    } catch (error) {
-      console.error("로그아웃 오류:", error);
-    }
-  };
+  const { signOut, isLoggedIn } = useAuth();
   
   return (
-    <header
-      className={cn(
-        "fixed top-0 left-0 right-0 z-50 transition-all duration-300",
-        isScrolled
-          ? "bg-background/80 backdrop-blur-md border-b py-3"
-          : "bg-transparent py-5"
-      )}
-    >
-      <div className="container mx-auto px-4 flex items-center justify-between">
-        <Link 
-          to="/" 
-          className="flex items-center text-2xl font-semibold animate-fade-in"
-        >
-          <GraduationCap className="h-7 w-7 mr-2 text-primary" />
-          <span>GradTrack</span>
-        </Link>
-        
-        <nav className="hidden md:flex items-center space-x-1 animate-fade-in">
-          {!isLandingPage && navItems.map((item) => (
-            <Link
-              key={item.name}
-              to={item.path}
-              className={cn(
-                "px-4 py-2 rounded-lg text-sm font-medium transition-all",
-                location.pathname === item.path
-                  ? "text-primary"
-                  : "text-foreground/70 hover:text-foreground"
-              )}
-            >
-              {item.name}
-            </Link>
-          ))}
-        </nav>
-        
-        <div className="hidden md:flex items-center space-x-4 animate-fade-in">
-          {isLandingPage ? (
-            <>
-              <Button variant="outline" size="sm">
-                로그인
-              </Button>
-              <Button size="sm">시작하기</Button>
-            </>
-          ) : (
-            <>
-              <Button variant="outline" size="sm" icon={<BookOpenCheck size={16} />}>
-                졸업 요건 확인
-              </Button>
-              {user && (
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  icon={<LogOut size={16} />}
-                  onClick={handleLogout}
-                >
-                  로그아웃
-                </Button>
-              )}
-            </>
-          )}
-        </div>
-        
-        <button
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="md:hidden p-2 rounded-lg text-foreground"
-        >
-          {mobileMenuOpen ? <X /> : <Menu />}
-        </button>
-      </div>
-      
-      {mobileMenuOpen && (
-        <div className="md:hidden fixed inset-x-0 top-[65px] bg-background/95 backdrop-blur-md border-b shadow-lg animate-slide-in-top">
-          <div className="py-4 px-4 flex flex-col space-y-2">
-            {!isLandingPage && navItems.map((item) => (
-              <Link
-                key={item.name}
-                to={item.path}
-                className={cn(
-                  "px-4 py-3 rounded-lg text-base font-medium",
-                  location.pathname === item.path
-                    ? "bg-secondary text-primary"
-                    : "text-foreground/70 hover:bg-secondary/50"
-                )}
-              >
-                {item.name}
-              </Link>
-            ))}
-            
-            <div className="pt-2 flex flex-col space-y-2">
-              {isLandingPage ? (
-                <>
-                  <Button variant="outline">로그인</Button>
-                  <Button>시작하기</Button>
-                </>
-              ) : (
-                <>
-                  <Button 
-                    variant="outline" 
-                    className="justify-center"
-                    icon={<BookOpenCheck size={18} />}
-                  >
-                    졸업 요건 확인
-                  </Button>
-                  {user && (
-                    <Button 
-                      variant="outline" 
-                      className="justify-center"
-                      icon={<LogOut size={18} />}
-                      onClick={handleLogout}
-                    >
-                      로그아웃
-                    </Button>
-                  )}
-                </>
-              )}
-            </div>
+    <header className="fixed w-full backdrop-blur-md bg-background/80 z-40 border-b">
+      <div className="container mx-auto px-4 py-3">
+        <div className="flex justify-between items-center">
+          <Logo />
+          
+          <div className="hidden md:flex items-center space-x-1">
+            <NavLink to="/" text="홈" />
+            <NavLink to="/schedule" text="시간표 만들기" />
+            <NavLink to="/courses" text="수강 기록" />
+            <NavLink to="/dashboard" text="대시보드" />
+            <NavLink to="/settings" text="설정" />
           </div>
+          
+          {!isLoggedIn ? (
+            <div className="hidden md:flex items-center space-x-2">
+              <Link to="/auth">
+                <Button variant="outline" size="sm">
+                  로그인
+                </Button>
+              </Link>
+              <Link to="/auth">
+                <Button size="sm">회원가입</Button>
+              </Link>
+            </div>
+          ) : (
+            <Button onClick={signOut} variant="outline" size="sm" className="hidden md:flex">
+              로그아웃
+            </Button>
+          )}
+          
+          <Sheet>
+            <SheetTrigger className="md:hidden p-2">
+              <Menu size={20} />
+            </SheetTrigger>
+            <SheetContent side="left">
+              <div className="flex flex-col space-y-4 mt-6">
+                <MobileNavLink to="/" text="홈" icon={<Home size={18} />} />
+                <MobileNavLink to="/schedule" text="시간표 만들기" icon={<Calendar size={18} />} />
+                <MobileNavLink to="/courses" text="수강 기록" icon={<GraduationCap size={18} />} />
+                <MobileNavLink to="/dashboard" text="대시보드" icon={<BarChart2 size={18} />} />
+                <MobileNavLink to="/settings" text="설정" icon={<Settings size={18} />} />
+                
+                {!isLoggedIn ? (
+                  <>
+                    <Link to="/auth">
+                      <Button variant="outline" className="w-full justify-start" size="sm">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="24"
+                          height="24"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="lucide lucide-log-in mr-2 h-4 w-4"
+                        >
+                          <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+                          <polyline points="10 17 15 12 10 7" />
+                          <line x1="15" x2="3" y1="12" y2="12" />
+                        </svg>
+                        로그인
+                      </Button>
+                    </Link>
+                    <Link to="/auth">
+                      <Button className="w-full justify-start" size="sm">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="24"
+                          height="24"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="lucide lucide-user-plus mr-2 h-4 w-4"
+                        >
+                          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                          <circle cx="9" cy="7" r="4" />
+                          <line x1="19" x2="19" y1="8" y2="14" />
+                          <line x1="16" x2="22" y1="11" y2="11" />
+                        </svg>
+                        회원가입
+                      </Button>
+                    </Link>
+                  </>
+                ) : (
+                  <Button onClick={signOut} variant="outline" className="w-full justify-start" size="sm">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="lucide lucide-log-out mr-2 h-4 w-4"
+                    >
+                      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                      <polyline points="16 17 21 12 16 7" />
+                      <line x1="21" x2="9" y1="12" y2="12" />
+                    </svg>
+                    로그아웃
+                  </Button>
+                )}
+              </div>
+            </SheetContent>
+          </Sheet>
         </div>
-      )}
+      </div>
     </header>
   );
 };

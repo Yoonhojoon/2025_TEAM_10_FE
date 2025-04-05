@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { DbCourse } from "@/components/courses/types";
 import { Loader2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 
 interface CourseProgressModalProps {
   isOpen: boolean;
@@ -26,7 +27,9 @@ const CourseProgressModal = ({ isOpen, onClose, category, categoryKorean }: Cour
   const [completedCourses, setCompletedCourses] = useState<DbCourse[]>([]);
   const [remainingCourses, setRemainingCourses] = useState<DbCourse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
   const { user } = useAuth();
+  const userGrade = user?.user_metadata?.grade ? parseInt(user.user_metadata.grade) : 4;
 
   useEffect(() => {
     if (!isOpen || !user) return;
@@ -92,6 +95,17 @@ const CourseProgressModal = ({ isOpen, onClose, category, categoryKorean }: Cour
     
     fetchCourses();
   }, [isOpen, user, categoryKorean]);
+
+  // Filter courses based on search query
+  const filteredCompletedCourses = completedCourses.filter(course => 
+    course.course_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    course.course_code.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const filteredRemainingCourses = remainingCourses.filter(course => 
+    course.course_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    course.course_code.toLowerCase().includes(searchQuery.toLowerCase())
+  );
   
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -99,6 +113,15 @@ const CourseProgressModal = ({ isOpen, onClose, category, categoryKorean }: Cour
         <DialogHeader>
           <DialogTitle className="text-xl">{categoryKorean} 과목 진행 상황</DialogTitle>
         </DialogHeader>
+        
+        <div className="mb-4">
+          <Input
+            placeholder="과목 이름 또는 코드로 검색"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full"
+          />
+        </div>
         
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-12">
@@ -108,16 +131,26 @@ const CourseProgressModal = ({ isOpen, onClose, category, categoryKorean }: Cour
         ) : (
           <Tabs defaultValue="completed" className="w-full mt-4">
             <TabsList className="grid grid-cols-2 mb-4">
-              <TabsTrigger value="completed">이수 완료 ({completedCourses.length})</TabsTrigger>
-              <TabsTrigger value="remaining">미이수 ({remainingCourses.length})</TabsTrigger>
+              <TabsTrigger value="completed">이수 완료 ({filteredCompletedCourses.length})</TabsTrigger>
+              <TabsTrigger value="remaining">미이수 ({filteredRemainingCourses.length})</TabsTrigger>
             </TabsList>
             
             <TabsContent value="completed">
-              <CourseTable courses={completedCourses} isEmpty={completedCourses.length === 0} type="completed" />
+              <CourseTable 
+                courses={filteredCompletedCourses} 
+                isEmpty={filteredCompletedCourses.length === 0} 
+                type="completed" 
+                userGrade={userGrade}
+              />
             </TabsContent>
             
             <TabsContent value="remaining">
-              <CourseTable courses={remainingCourses} isEmpty={remainingCourses.length === 0} type="remaining" />
+              <CourseTable 
+                courses={filteredRemainingCourses} 
+                isEmpty={filteredRemainingCourses.length === 0} 
+                type="remaining" 
+                userGrade={userGrade}
+              />
             </TabsContent>
           </Tabs>
         )}
@@ -130,9 +163,10 @@ interface CourseTableProps {
   courses: DbCourse[];
   isEmpty: boolean;
   type: 'completed' | 'remaining';
+  userGrade: number;
 }
 
-const CourseTable = ({ courses, isEmpty, type }: CourseTableProps) => {
+const CourseTable = ({ courses, isEmpty, type, userGrade }: CourseTableProps) => {
   if (isEmpty) {
     return (
       <div className="text-center py-12 text-muted-foreground">
@@ -148,14 +182,19 @@ const CourseTable = ({ courses, isEmpty, type }: CourseTableProps) => {
           <TableRow>
             <TableHead>과목 코드</TableHead>
             <TableHead>과목명</TableHead>
+            <TableHead>학년</TableHead>
             <TableHead className="text-right">학점</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {courses.map((course) => (
-            <TableRow key={course.course_id}>
+            <TableRow 
+              key={course.course_id}
+              className={course.grade && userGrade > course.grade ? "text-red-600 font-medium" : ""}
+            >
               <TableCell className="font-medium">{course.course_code}</TableCell>
               <TableCell>{course.course_name}</TableCell>
+              <TableCell>{course.grade || "-"}</TableCell>
               <TableCell className="text-right">{course.credit}</TableCell>
             </TableRow>
           ))}

@@ -1,7 +1,11 @@
 
-import { Button } from "@/components/ui/button";
 import { useState } from "react";
-import { Course } from "@/components/courses/types";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Course } from "./types";
+import { XCircle } from "lucide-react";
 
 interface AddCourseFormProps {
   onClose: () => void;
@@ -9,105 +13,132 @@ interface AddCourseFormProps {
 }
 
 const AddCourseForm = ({ onClose, onAddCourse }: AddCourseFormProps) => {
-  const [newCourse, setNewCourse] = useState<Omit<Course, "id">>({
-    code: "",
-    name: "",
-    category: "majorRequired",
-    credit: 3
-  });
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setNewCourse(prev => ({
-      ...prev,
-      [name]: name === "credit" ? parseInt(value) : value
-    }));
-  };
-
-  const handleSubmit = () => {
-    onAddCourse(newCourse);
-    setNewCourse({
-      code: "",
-      name: "",
-      category: "majorRequired",
-      credit: 3
+  const [name, setName] = useState("");
+  const [code, setCode] = useState("");
+  const [credit, setCredit] = useState(3);
+  const [category, setCategory] = useState<Course["category"]>("majorRequired");
+  const [grade, setGrade] = useState<number | undefined>(undefined);
+  
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!name || !code) {
+      return;
+    }
+    
+    onAddCourse({
+      name,
+      code,
+      credit,
+      category,
+      grade
     });
+    
+    // Reset form
+    setName("");
+    setCode("");
+    setCredit(3);
+    setCategory("majorRequired");
+    setGrade(undefined);
+    
+    onClose();
   };
-
-  const categoryOptions = [
-    { value: "majorRequired", label: "전공필수" },
-    { value: "majorElective", label: "전공선택" },
-    { value: "generalRequired", label: "배분이수" },
-    { value: "generalElective", label: "자유이수" },
-    { value: "industryRequired", label: "산학필수" },
-    { value: "basicGeneral", label: "기초교과" }
-  ];
-
+  
   return (
-    <div className="animate-scale-in">
-      <h4 className="font-medium mb-3">새 과목 추가</h4>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-        <div>
-          <label className="block text-sm font-medium mb-1">과목 코드</label>
-          <input
-            type="text"
-            name="code"
-            value={newCourse.code}
-            onChange={handleInputChange}
-            className="w-full p-2 border rounded-md"
-            placeholder="CS101"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">과목명</label>
-          <input
-            type="text"
-            name="name"
-            value={newCourse.name}
-            onChange={handleInputChange}
-            className="w-full p-2 border rounded-md"
-            placeholder="프로그래밍 기초"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">카테고리</label>
-          <select
-            name="category"
-            value={newCourse.category}
-            onChange={handleInputChange}
-            className="w-full p-2 border rounded-md"
-          >
-            {categoryOptions.map(option => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">학점</label>
-          <select
-            name="credit"
-            value={newCourse.credit}
-            onChange={handleInputChange}
-            className="w-full p-2 border rounded-md"
-          >
-            <option value="1">1학점</option>
-            <option value="2">2학점</option>
-            <option value="3">3학점</option>
-            <option value="4">4학점</option>
-          </select>
-        </div>
-      </div>
-      <div className="flex justify-end space-x-2">
-        <Button variant="outline" onClick={onClose}>
-          취소
-        </Button>
-        <Button onClick={handleSubmit}>
-          추가
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="flex justify-between items-center mb-2">
+        <h3 className="text-lg font-medium">과목 직접 추가</h3>
+        <Button type="button" variant="ghost" size="sm" onClick={onClose}>
+          <XCircle className="h-4 w-4" />
         </Button>
       </div>
-    </div>
+      
+      <div className="space-y-2">
+        <Label htmlFor="name">과목명</Label>
+        <Input
+          id="name"
+          placeholder="예: 객체지향프로그래밍"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          required
+        />
+      </div>
+      
+      <div className="space-y-2">
+        <Label htmlFor="code">과목 코드</Label>
+        <Input
+          id="code"
+          placeholder="예: COSE101"
+          value={code}
+          onChange={(e) => setCode(e.target.value)}
+          required
+        />
+      </div>
+      
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="credit">학점</Label>
+          <Select
+            value={credit.toString()}
+            onValueChange={(value) => setCredit(parseInt(value))}
+          >
+            <SelectTrigger id="credit">
+              <SelectValue placeholder="학점" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="1">1학점</SelectItem>
+              <SelectItem value="2">2학점</SelectItem>
+              <SelectItem value="3">3학점</SelectItem>
+              <SelectItem value="4">4학점</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        
+        <div className="space-y-2">
+          <Label htmlFor="grade">학년</Label>
+          <Select
+            value={grade?.toString() || ""}
+            onValueChange={(value) => setGrade(value ? parseInt(value) : undefined)}
+          >
+            <SelectTrigger id="grade">
+              <SelectValue placeholder="학년" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">미지정</SelectItem>
+              <SelectItem value="1">1학년</SelectItem>
+              <SelectItem value="2">2학년</SelectItem>
+              <SelectItem value="3">3학년</SelectItem>
+              <SelectItem value="4">4학년</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      
+      <div className="space-y-2">
+        <Label htmlFor="category">카테고리</Label>
+        <Select
+          value={category}
+          onValueChange={(value) => setCategory(value as Course["category"])}
+        >
+          <SelectTrigger id="category">
+            <SelectValue placeholder="카테고리" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="majorRequired">전공필수</SelectItem>
+            <SelectItem value="majorElective">전공선택</SelectItem>
+            <SelectItem value="majorBasic">전공기초</SelectItem>
+            <SelectItem value="generalRequired">교양필수</SelectItem>
+            <SelectItem value="generalElective">교양선택</SelectItem>
+            <SelectItem value="industryRequired">산학필수</SelectItem>
+            <SelectItem value="basicGeneral">기초교양</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      
+      <div className="flex justify-end pt-2">
+        <Button type="submit">추가하기</Button>
+      </div>
+    </form>
   );
 };
 
