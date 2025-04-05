@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useState, useEffect } from "react";
@@ -95,6 +94,8 @@ const CourseSelector = ({ onAddCourse }: CourseSelectorProps) => {
         query = query.eq('category', '자유이수교과');
       } else if (tabValue === "industry-required") {
         query = query.eq('category', '산학필수');
+      } else if (tabValue === "basic-general") {
+        query = query.eq('category', '기초교과');
       }
       
       const { data, error } = await query;
@@ -120,7 +121,7 @@ const CourseSelector = ({ onAddCourse }: CourseSelectorProps) => {
   };
 
   const selectCourseFromDb = (course: DbCourse) => {
-    const mappedCategory = (): "majorRequired" | "majorElective" | "generalRequired" | "generalElective" | "industryRequired" => {
+    const mappedCategory = (): "majorRequired" | "majorElective" | "generalRequired" | "generalElective" | "industryRequired" | "basicGeneral" => {
       switch (course.category) {
         case "전공필수":
         case "전공기초":
@@ -133,6 +134,8 @@ const CourseSelector = ({ onAddCourse }: CourseSelectorProps) => {
           return "generalElective";
         case "산학필수":
           return "industryRequired";
+        case "기초교과":
+          return "basicGeneral";
         default:
           return "generalElective";
       }

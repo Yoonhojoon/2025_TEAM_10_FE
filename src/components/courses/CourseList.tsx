@@ -1,10 +1,10 @@
 
-import { useState } from "react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
+import React, { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { DbCourse } from "@/components/courses/types";
-import { ScheduleCourse } from "@/types/schedule";
+import { Button } from "@/components/ui/button";
+import { Info, AlertCircle, Loader2 } from "lucide-react";
+import { DbCourse } from "./types";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface CourseListProps {
   departmentError: string | null;
@@ -14,78 +14,80 @@ interface CourseListProps {
   onSelectCourse: (course: DbCourse) => void;
 }
 
-const CourseList = ({ departmentError, isLoadingCourses, dbCourses, fetchCourses, onSelectCourse }: CourseListProps) => {
+const CourseList = ({
+  departmentError,
+  isLoadingCourses,
+  dbCourses,
+  fetchCourses,
+  onSelectCourse,
+}: CourseListProps) => {
+  const [activeTab, setActiveTab] = useState("major-required");
+  
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    fetchCourses(value);
+  };
+  
   return (
-    <div className="py-4">
+    <div className="mt-6">
       {departmentError && (
-        <Alert variant="destructive" className="mt-4">
+        <Alert variant="destructive" className="mb-4">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>{departmentError}</AlertDescription>
         </Alert>
       )}
       
-      <Tabs defaultValue="major-required" className="w-full">
-        <TabsList className="grid grid-cols-5 mb-4">
-          <TabsTrigger value="major-required" onClick={() => fetchCourses("major-required")}>전공필수</TabsTrigger>
-          <TabsTrigger value="major-elective" onClick={() => fetchCourses("major-elective")}>전공선택</TabsTrigger>
-          <TabsTrigger value="general-required" onClick={() => fetchCourses("general-required")}>교양필수</TabsTrigger>
-          <TabsTrigger value="general-elective" onClick={() => fetchCourses("general-elective")}>교양선택</TabsTrigger>
-          <TabsTrigger value="industry-required" onClick={() => fetchCourses("industry-required")}>산학필수</TabsTrigger>
+      <Tabs value={activeTab} onValueChange={handleTabChange} defaultValue="major-required">
+        <TabsList className="grid grid-cols-7 mb-4">
+          <TabsTrigger value="major-required">전공필수</TabsTrigger>
+          <TabsTrigger value="major-elective">전공선택</TabsTrigger>
+          <TabsTrigger value="general-required">배분이수</TabsTrigger>
+          <TabsTrigger value="general-elective">자유이수</TabsTrigger>
+          <TabsTrigger value="industry-required">산학필수</TabsTrigger>
+          <TabsTrigger value="basic-general">기초교양</TabsTrigger>
+          <TabsTrigger value="all">전체</TabsTrigger>
         </TabsList>
         
-        {renderTabContent("major-required", isLoadingCourses, dbCourses, onSelectCourse, departmentError)}
-        {renderTabContent("major-elective", isLoadingCourses, dbCourses, onSelectCourse, departmentError)}
-        {renderTabContent("general-required", isLoadingCourses, dbCourses, onSelectCourse, departmentError)}
-        {renderTabContent("general-elective", isLoadingCourses, dbCourses, onSelectCourse, departmentError)}
-        {renderTabContent("industry-required", isLoadingCourses, dbCourses, onSelectCourse, departmentError)}
+        {/* The content for each tab is the same, so we can use a single component for all */}
+        {["major-required", "major-elective", "general-required", "general-elective", "industry-required", "basic-general", "all"].map(tab => (
+          <TabsContent key={tab} value={tab} className="space-y-4">
+            {isLoadingCourses ? (
+              <div className="flex justify-center items-center p-8">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : dbCourses.length === 0 ? (
+              <div className="text-center p-8 text-muted-foreground">
+                {tab === activeTab && <p>검색 결과가 없습니다.</p>}
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
+                {dbCourses.map((course) => (
+                  <div
+                    key={course.course_id}
+                    className="p-3 border rounded-md flex justify-between items-center hover:bg-accent/20 transition-colors"
+                  >
+                    <div>
+                      <div className="font-medium">{course.course_name}</div>
+                      <div className="text-sm text-muted-foreground mt-1">
+                        {course.course_code} · {course.credit}학점
+                        {course.schedule_time && <span> · {course.schedule_time}</span>}
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => onSelectCourse(course)}
+                    >
+                      추가
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+        ))}
       </Tabs>
     </div>
-  );
-};
-
-const renderTabContent = (
-  tabValue: string,
-  isLoading: boolean,
-  courses: DbCourse[],
-  onSelectCourse: (course: DbCourse) => void,
-  departmentError: string | null
-) => {
-  return (
-    <TabsContent value={tabValue} className="mt-0">
-      {isLoading ? (
-        <div className="py-8 text-center text-muted-foreground">
-          과목 정보를 불러오는 중...
-        </div>
-      ) : courses.length > 0 ? (
-        <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-2">
-          {courses.map(course => (
-            <div 
-              key={course.course_id} 
-              className="p-3 border rounded-md hover:bg-secondary/50 cursor-pointer transition-colors"
-              onClick={() => onSelectCourse(course)}
-            >
-              <div className="font-medium">{course.course_name}</div>
-              <div className="text-sm text-muted-foreground flex justify-between">
-                <span>{course.course_code}</span>
-                <span>{course.credit}학점</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : tabValue.includes("major") && departmentError ? (
-        <div className="py-8 text-center text-muted-foreground">
-          학과 정보가 필요합니다. 프로필 설정을 완료해주세요.
-        </div>
-      ) : (
-        <div className="py-8 text-center text-muted-foreground">
-          {tabValue === "major-required" && "등록된 전공필수 과목이 없습니다."}
-          {tabValue === "major-elective" && "등록된 전공선택 과목이 없습니다."}
-          {tabValue === "general-required" && "등록된 교양필수 과목이 없습니다."}
-          {tabValue === "general-elective" && "등록된 교양선택 과목이 없습니다."}
-          {tabValue === "industry-required" && "등록된 산학필수 과목이 없습니다."}
-        </div>
-      )}
-    </TabsContent>
   );
 };
 

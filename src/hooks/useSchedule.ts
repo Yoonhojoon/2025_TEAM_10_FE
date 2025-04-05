@@ -140,7 +140,7 @@ export const useSchedule = () => {
   };
   
   // Generate schedules using Supabase edge function
-  const handleGenerateSchedules = async () => {
+  const handleGenerateSchedules = async (categories?: string[]) => {
     if (!user) {
       toast({
         title: "로그인 필요",
@@ -164,10 +164,14 @@ export const useSchedule = () => {
       
       const takenCourseIds = enrollments.map(enrollment => enrollment.course_id);
       
+      // Use provided categories or default to major courses
+      const courseCategories = categories || ["전공필수", "전공선택", "전공기초"];
+      
       const { data, error } = await supabase.functions.invoke('generate-schedules', {
         body: {
           userId: user.id,
-          takenCourseIds
+          takenCourseIds,
+          categories: courseCategories
         }
       });
       

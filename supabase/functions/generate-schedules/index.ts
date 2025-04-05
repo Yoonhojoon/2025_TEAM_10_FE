@@ -1,13 +1,35 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
+interface Course {
+  course_id: string;
+  course_name: string;
+  course_code: string;
+  credit: number;
+  schedule_time: string;
+  classroom: string;
+  category: string;
+}
+
+interface Schedule {
+  name: string;
+  과목들: Array<{
+    course_id: string;
+    과목_이름: string;
+    학수번호: string;
+    학점: number;
+    강의_시간: string;
+    강의실: string;
+  }>;
+  총_학점: number;
+  설명: string;
+}
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -16,222 +38,225 @@ serve(async (req) => {
   }
 
   try {
-    // Get request body
-    const { userId, takenCourseIds } = await req.json();
-
+    // Set up the Supabase client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    
+    const { userId, takenCourseIds, categories = ["전공필수", "전공선택", "전공기초"] } = await req.json();
+    
     if (!userId) {
       return new Response(
         JSON.stringify({ error: 'User ID is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
       );
     }
-
-    // Create Supabase client with Auth context
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: { headers: { Authorization: req.headers.get('Authorization')! } },
-        auth: { persistSession: false }
-      }
-    );
-
-    // Get user information to determine department
-    const { data: userData, error: userError } = await supabaseClient
+    
+    // Fetch user department
+    const { data: userData, error: userError } = await supabase
       .from('users')
       .select('department_id')
       .eq('user_id', userId)
       .single();
-
-    if (userError || !userData) {
-      console.error('Error fetching user data:', userError);
+      
+    if (userError) {
       return new Response(
-        JSON.stringify({ error: 'Failed to fetch user data' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: 'Failed to fetch user data', details: userError.message }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
       );
     }
-
+    
     const departmentId = userData.department_id;
-
-    // Get all courses for the user's department
-    const { data: availableCourses, error: coursesError } = await supabaseClient
+    
+    // Fetch available courses based on department and categories
+    const { data: availableCourses, error: coursesError } = await supabase
       .from('courses')
       .select('*')
-      .eq('department_id', departmentId);
-
+      .eq('department_id', departmentId)
+      .in('category', categories)
+      .order('course_name', { ascending: true });
+      
     if (coursesError) {
-      console.error('Error fetching courses:', coursesError);
       return new Response(
-        JSON.stringify({ error: 'Failed to fetch available courses' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: 'Failed to fetch courses', details: coursesError.message }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
       );
     }
-
-    // Filter out courses the user has already taken
-    const unregisteredCourses = availableCourses.filter(course => 
+    
+    // Filter out courses that the user has already taken
+    const filteredCourses = availableCourses.filter(course => 
       !takenCourseIds.includes(course.course_id)
     );
-
-    if (unregisteredCourses.length === 0) {
-      return new Response(
-        JSON.stringify({ message: 'No unregistered courses found for your department', schedules: [] }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    console.log(`Found ${unregisteredCourses.length} unregistered courses for user's department`);
-
-    // Prepare the prompt for OpenAI with the specific format requested
-    const promptContent = `
-      나는 다음 과목들을 사용하여 3개의 최적의 수업 시간표를 만들고 싶습니다:
-      ${unregisteredCourses.map(course => 
-        `- ${course.course_name} (${course.course_code}): ${course.credit}학점, 시간: ${course.schedule_time}, 장소: ${course.classroom || '미정'}`
-      ).join('\n')}
-
-      시간표 생성 규칙:
-      1. 수업 시간이 겹치지 않아야 함
-      2. 각 시간표는 15-21학점 사이여야 함
-      3. 수업이 다양한 요일에 골고루 분산되도록 함
-      4. 가능하면 다양한 과목 유형을 포함해야 함
-
-      아래 형식으로 JSON 응답만 제공해주세요(추가 텍스트 없이):
-      {
-        "schedules": [
-          {
-            "name": "시간표 옵션 1",
-            "태그": ["균형잡힌", "알찬"],
-            "과목들": [
-              {
-                "course_id": "[course_id]",
-                "과목_이름": "[course_name]",
-                "학수번호": "[course_code]",
-                "학점": [credit],
-                "강의_시간": "[schedule_time]",
-                "강의실": "[classroom]"
-              }
-            ],
-            "총_학점": [sum of credits],
-            "설명": "[이 시간표의 장점에 대한 간략한 설명]"
-          }
-        ]
-      }
-    `;
-
-    // Call OpenAI API
-    console.log('Calling OpenAI API to generate schedules');
-    const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENAI_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        messages: [
-          {
-            role: 'user',
-            content: promptContent
-          }
-        ],
-        temperature: 0.7
-      })
-    });
-
-    const openAIData = await openAIResponse.json();
     
-    if (!openAIResponse.ok) {
-      console.error('OpenAI API error:', openAIData);
-      return new Response(
-        JSON.stringify({ error: 'Failed to generate schedules with OpenAI' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Process and return the generated schedules
-    const generatedContent = openAIData.choices[0].message.content;
-    console.log('Generated content:', generatedContent);
-    
-    // Try to parse the JSON response from OpenAI
-    try {
-      // Clean up the response if it contains markdown code blocks or any other unnecessary characters
-      let cleanContent = generatedContent;
-      
-      // Remove markdown code block syntax if present
-      if (cleanContent.includes('```json')) {
-        cleanContent = cleanContent.replace(/```json\n|\n```/g, '');
-      } else if (cleanContent.includes('```')) {
-        cleanContent = cleanContent.replace(/```\n|\n```/g, '');
-      }
-      
-      // Additional cleanup for any leading/trailing whitespace
-      cleanContent = cleanContent.trim();
-      
-      const schedulesData = JSON.parse(cleanContent);
-      
-      // Map the course IDs back to the actual course IDs from our database
-      if (schedulesData.schedules) {
-        schedulesData.schedules.forEach(schedule => {
-          if (schedule.과목들) {
-            schedule.과목들.forEach(course => {
-              // Find the matching course in our unregistered courses
-              const matchingCourse = unregisteredCourses.find(
-                dbCourse => dbCourse.course_code === course.학수번호 || dbCourse.course_name === course.과목_이름
-              );
-              
-              if (matchingCourse) {
-                course.course_id = matchingCourse.course_id;
-              }
-            });
-          }
-        });
-        
-        // Now save each schedule to the schedules table
-        const savePromises = schedulesData.schedules.map(async (schedule) => {
-          // Extract tags from the schedule
-          const tags = schedule.태그 || [];
-          
-          // Create schedule data for DB
-          const scheduleData = {
-            user_id: userId,
-            schedule_json: schedule,
-            description_tags: tags
-          };
-          
-          // Insert the schedule into the database
-          const { data, error } = await supabaseClient
-            .from('schedules')
-            .insert(scheduleData);
-            
-          if (error) {
-            console.error('Error saving schedule to database:', error);
-          }
-          
-          return { data, error };
-        });
-        
-        // Wait for all save operations to complete
-        await Promise.all(savePromises);
-      }
-      
-      return new Response(
-        JSON.stringify(schedulesData),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    } catch (parseError) {
-      console.error('Error parsing OpenAI response:', parseError, 'Raw response:', generatedContent);
+    if (filteredCourses.length === 0) {
       return new Response(
         JSON.stringify({ 
-          error: 'Failed to parse schedule data from OpenAI',
-          raw_response: generatedContent 
+          message: '수강 가능한 과목이 없습니다. 모든 과목을 이미 수강했거나, 다른 카테고리를 선택해보세요.',
+          schedules: []
         }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-  } catch (error) {
-    console.error('Unexpected error in generate-schedules function:', error);
+    
+    // Generate schedules using simple algorithm
+    const schedules = generateSchedules(filteredCourses);
+    
     return new Response(
-      JSON.stringify({ error: 'An unexpected error occurred' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ 
+        schedules,
+        message: schedules.length > 0 ? undefined : '시간표를 생성할 수 없습니다. 다른 카테고리를 선택하거나 수강 내역을 확인해주세요.'
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  } catch (error) {
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
     );
   }
 });
+
+// Helper function to check time conflicts
+function hasTimeConflict(courseA: Course, courseB: Course): boolean {
+  // Simplified implementation for the sample
+  if (courseA.schedule_time === courseB.schedule_time) {
+    return true;
+  }
+  return false;
+}
+
+// Generate schedules using a simple greedy algorithm
+function generateSchedules(courses: Course[]): Schedule[] {
+  const schedules: Schedule[] = [];
+  
+  // Let's create 3 schedules with different approaches
+  
+  // Schedule 1: Maximize credits
+  const creditSortedCourses = [...courses].sort((a, b) => b.credit - a.credit);
+  const schedule1 = createSchedule(creditSortedCourses, "최대 학점 시간표");
+  if (schedule1.과목들.length > 0) schedules.push(schedule1);
+  
+  // Schedule 2: Balanced (alternate selecting different categories)
+  const categoryCourses = groupByCategory(courses);
+  const schedule2 = createBalancedSchedule(categoryCourses, "균형 잡힌 시간표");
+  if (schedule2.과목들.length > 0) schedules.push(schedule2);
+  
+  // Schedule 3: Random selection with preference to earlier classes
+  const timeSortedCourses = [...courses].sort((a, b) => 
+    a.schedule_time.localeCompare(b.schedule_time)
+  );
+  const schedule3 = createSchedule(timeSortedCourses, "이른 시간 선호 시간표");
+  if (schedule3.과목들.length > 0) schedules.push(schedule3);
+  
+  return schedules;
+}
+
+// Group courses by category
+function groupByCategory(courses: Course[]): Record<string, Course[]> {
+  const result: Record<string, Course[]> = {};
+  
+  courses.forEach(course => {
+    if (!result[course.category]) {
+      result[course.category] = [];
+    }
+    result[course.category].push(course);
+  });
+  
+  return result;
+}
+
+// Create a balanced schedule by picking from different categories
+function createBalancedSchedule(categoryCourses: Record<string, Course[]>, name: string): Schedule {
+  const selectedCourses: Course[] = [];
+  const courseIds = new Set<string>();
+  
+  // Get categories as an array
+  const categories = Object.keys(categoryCourses);
+  
+  // We'll try to select one course from each category in rotation
+  let totalCredits = 0;
+  const MAX_CREDITS = 18;
+  let keepGoing = true;
+  
+  while (keepGoing) {
+    keepGoing = false;
+    
+    for (const category of categories) {
+      const courses = categoryCourses[category];
+      
+      // Find a course from this category that doesn't conflict
+      for (let i = 0; i < courses.length; i++) {
+        const course = courses[i];
+        
+        // Skip if we've already included this course
+        if (courseIds.has(course.course_id)) continue;
+        
+        // Check for conflicts
+        const hasConflict = selectedCourses.some(selectedCourse => 
+          hasTimeConflict(selectedCourse, course)
+        );
+        
+        // Check if adding this course would exceed our credit limit
+        if (!hasConflict && totalCredits + course.credit <= MAX_CREDITS) {
+          selectedCourses.push(course);
+          courseIds.add(course.course_id);
+          totalCredits += course.credit;
+          courses.splice(i, 1); // Remove the course from consideration
+          keepGoing = true;
+          break;
+        }
+      }
+    }
+  }
+  
+  return {
+    name,
+    과목들: selectedCourses.map(course => ({
+      course_id: course.course_id,
+      과목_이름: course.course_name,
+      학수번호: course.course_code,
+      학점: course.credit,
+      강의_시간: course.schedule_time,
+      강의실: course.classroom
+    })),
+    총_학점: totalCredits,
+    설명: `${name}입니다. 총 ${totalCredits}학점으로 구성되었습니다.`
+  };
+}
+
+// Create a schedule from a sorted list
+function createSchedule(sortedCourses: Course[], name: string): Schedule {
+  const selectedCourses: Course[] = [];
+  let totalCredits = 0;
+  const MAX_CREDITS = 18;
+  
+  for (const course of sortedCourses) {
+    // Check for conflicts
+    const hasConflict = selectedCourses.some(selectedCourse => 
+      hasTimeConflict(selectedCourse, course)
+    );
+    
+    // Check if adding this course would exceed our credit limit
+    if (!hasConflict && totalCredits + course.credit <= MAX_CREDITS) {
+      selectedCourses.push(course);
+      totalCredits += course.credit;
+    }
+    
+    // Stop if we've reached a good number of credits
+    if (totalCredits >= 15) break;
+  }
+  
+  return {
+    name,
+    과목들: selectedCourses.map(course => ({
+      course_id: course.course_id,
+      과목_이름: course.course_name,
+      학수번호: course.course_code,
+      학점: course.credit,
+      강의_시간: course.schedule_time,
+      강의실: course.classroom
+    })),
+    총_학점: totalCredits,
+    설명: `${name}입니다. 총 ${totalCredits}학점으로 구성되었습니다.`
+  };
+}

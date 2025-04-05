@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState } from "react";
 import { useSchedule } from "@/hooks/useSchedule";
 import Footer from "@/components/layout/Footer";
@@ -17,6 +16,7 @@ import { GraduationCap, BookPlus, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import GraduationRequirementsModal from "@/components/dashboard/GraduationRequirementsModal";
 import { TimeConflict } from "@/types/schedule";
+import CategorySelectionModal from "@/components/schedule/CategorySelectionModal";
 
 const Schedule = () => {
   const {
@@ -45,6 +45,8 @@ const Schedule = () => {
   } = useSchedule();
   
   const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(["전공필수", "전공선택", "전공기초"]);
   
   // Format current schedule for the visualizer
   const currentSchedule = {
@@ -99,6 +101,15 @@ const Schedule = () => {
     setIsScheduleDialogOpen(false);
   };
 
+  const handleGenerateWithCategories = () => {
+    setIsCategoryModalOpen(true);
+  };
+
+  const handleCategoriesSelected = (categories: string[]) => {
+    setSelectedCategories(categories);
+    handleGenerateSchedules(categories);
+  };
+
   return (
     <div className="flex flex-col min-h-screen">
       <Header />
@@ -107,7 +118,7 @@ const Schedule = () => {
         <div className="container mx-auto px-4">
           <ScheduleHeader 
             isGeneratingSchedules={isGeneratingSchedules}
-            handleGenerateSchedules={handleGenerateSchedules}
+            handleGenerateSchedules={handleGenerateWithCategories}
             savedSchedules={savedSchedules}
             selectedSavedSchedule={selectedSavedSchedule}
             handleViewSchedule={handleViewSchedule}
@@ -200,6 +211,12 @@ const Schedule = () => {
         onOpenChange={setIsSaveDialogOpen}
         onSave={handleSaveSchedule}
         isSaving={isSavingSchedule}
+      />
+      
+      <CategorySelectionModal
+        isOpen={isCategoryModalOpen}
+        onOpenChange={setIsCategoryModalOpen}
+        onSelectCategories={handleCategoriesSelected}
       />
     </div>
   );
