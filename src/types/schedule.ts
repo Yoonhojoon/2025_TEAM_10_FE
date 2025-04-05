@@ -24,7 +24,7 @@ export interface CourseData {
   강의_시간?: string;
   classroom?: string;
   강의실?: string;
-  category?: string;
+  category?: "전공필수" | "전공선택" | "전공기초" | "배분이수교과" | "자유이수교과" | "산학필수";
 }
 
 export interface GeneratedSchedule {

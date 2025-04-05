@@ -95,7 +95,7 @@ const CourseHistoryInput = ({
           }
         } else {
           console.log("No department found for user:", user.id);
-          setDepartmentError("사용자의 학과 정보를 찾을 수 없��니다. 프로필 설정을 완료해주세요.");
+          setDepartmentError("사��자의 학과 정보를 찾을 수 없��니다. 프로필 설정을 완료해주세요.");
         }
       } catch (error) {
         console.error('Error fetching user department:', error);
@@ -299,7 +299,7 @@ const CourseHistoryInput = ({
                   <TabsContent value="major-required" className="mt-0">
                     {isLoadingCourses ? (
                       <div className="py-8 text-center text-muted-foreground">
-                        과목 정보를 불러오는 중...
+                        과목 정보�� 불러오는 중...
                       </div>
                     ) : dbCourses.length > 0 ? (
                       <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-2">

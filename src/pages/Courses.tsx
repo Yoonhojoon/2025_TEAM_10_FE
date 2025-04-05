@@ -1,4 +1,3 @@
-
 import CourseHistoryInput from "@/components/courses/CourseHistoryInput";
 import Footer from "@/components/layout/Footer";
 import Header from "@/components/layout/Header";
@@ -56,8 +55,9 @@ const Courses = () => {
               if (category === "전공필수" || category === "전공기초") return "majorRequired";
               if (category === "전공선택") return "majorElective";
               if (category === "배분이수교과") return "generalRequired";
+              if (category === "자유이수교과") return "generalElective";
               if (category === "산학필수") return "industryRequired";
-              return "generalElective";
+              return "generalElective"; // Default case
             };
             
             return {
