@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { 
@@ -38,7 +37,6 @@ const CourseProgressModal = ({ isOpen, onClose, category, categoryKorean }: Cour
       setIsLoading(true);
       
       try {
-        // 1. 사용자가 수강한 과목 목록 가져오기
         const { data: enrollments, error: enrollmentError } = await supabase
           .from('enrollments')
           .select(`
@@ -49,7 +47,6 @@ const CourseProgressModal = ({ isOpen, onClose, category, categoryKorean }: Cour
         
         if (enrollmentError) throw enrollmentError;
         
-        // 2. 사용자 학과 정보 가져오기
         const departmentName = user.user_metadata?.department;
         if (!departmentName) throw new Error("Department information not found");
         
@@ -61,8 +58,6 @@ const CourseProgressModal = ({ isOpen, onClose, category, categoryKorean }: Cour
         
         if (departmentError) throw departmentError;
         
-        // 3. 학과의 모든 과목 불러오기 (해당 카테고리의)
-        // Make sure categoryKorean is a valid category in the database
         const { data: allCourses, error: coursesError } = await supabase
           .from('courses')
           .select('*')
@@ -71,30 +66,23 @@ const CourseProgressModal = ({ isOpen, onClose, category, categoryKorean }: Cour
           
         if (coursesError) throw coursesError;
         
-        // 4. 이미 들은 과목과 아직 듣지 않은 과목으로 분류
         const completedCourseIds = enrollments
           .filter(e => e.courses?.category === categoryKorean)
           .map(e => e.course_id);
         
-        // Get completed courses and sort by grade
         const completed = allCourses
           .filter(course => completedCourseIds.includes(course.course_id))
           .sort((a, b) => {
-            // Handle null grades (place them at the end)
             if (a.grade === null) return 1;
             if (b.grade === null) return -1;
-            // Sort by grade ascending
             return (a.grade || 0) - (b.grade || 0);
           });
         
-        // Get remaining courses and sort by grade
         const remaining = allCourses
           .filter(course => !completedCourseIds.includes(course.course_id))
           .sort((a, b) => {
-            // Handle null grades (place them at the end)
             if (a.grade === null) return 1;
             if (b.grade === null) return -1;
-            // Sort by grade ascending
             return (a.grade || 0) - (b.grade || 0);
           });
         
@@ -110,7 +98,6 @@ const CourseProgressModal = ({ isOpen, onClose, category, categoryKorean }: Cour
     fetchCourses();
   }, [isOpen, user, categoryKorean]);
 
-  // Filter courses based on search query
   const filteredCompletedCourses = completedCourses.filter(course => 
     course.course_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     course.course_code.toLowerCase().includes(searchQuery.toLowerCase())
@@ -204,7 +191,7 @@ const CourseTable = ({ courses, isEmpty, type, userGrade }: CourseTableProps) =>
           {courses.map((course) => (
             <TableRow 
               key={course.course_id}
-              className={course.grade && userGrade > course.grade ? "text-red-600 font-medium" : ""}
+              className={course.grade && userGrade > course.grade ? "bg-red-100/50 dark:bg-red-900/20" : ""}
             >
               <TableCell className="font-medium">{course.course_code}</TableCell>
               <TableCell>{course.course_name}</TableCell>

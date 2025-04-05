@@ -42,7 +42,7 @@ const CourseTable = ({ courses, onDeleteCourse, isLoading }: CourseTableProps) =
             <TableRow 
               key={course.id} 
               className={`bg-card hover:bg-secondary/30 transition-colors ${
-                course.grade && userGrade > course.grade ? "text-red-600 font-medium" : ""
+                course.grade && userGrade > course.grade ? "bg-red-100/50 dark:bg-red-900/20" : ""
               }`}
             >
               <TableCell>{course.code}</TableCell>
