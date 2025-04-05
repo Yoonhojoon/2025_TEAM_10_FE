@@ -112,11 +112,51 @@ const Courses = () => {
     try {
       console.log("Adding course:", course);
       
-      const { data: courseData, error: courseError } = await supabase
+      // 1. First, get the user's department to prioritize courses from their department
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('department_id')
+        .eq('user_id', user.id)
+        .single();
+      
+      if (userError) {
+        console.error("Error fetching user department:", userError);
+      }
+      
+      console.log("User department data:", userData);
+      
+      // 2. Look up the course with more specific criteria - first try to find an exact match with course_code AND user's department
+      let query = supabase
         .from('courses')
-        .select('course_id')
-        .eq('course_code', course.code)
-        .maybeSingle();
+        .select('course_id');
+      
+      // If we have user's department, prioritize that department's courses
+      if (userData && userData.department_id) {
+        query = query.eq('course_code', course.code)
+                     .eq('department_id', userData.department_id);
+      } else {
+        // Without department info, just look by course code
+        query = query.eq('course_code', course.code);
+      }
+        
+      let { data: courseData, error: courseError } = await query.maybeSingle();
+      
+      // If we couldn't find by department, fall back to just course code
+      if (!courseData && userData && userData.department_id) {
+        console.log("Course not found in user's department, searching all departments");
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('courses')
+          .select('course_id')
+          .eq('course_code', course.code)
+          .limit(1); // Just take the first match if multiple exist
+          
+        if (fallbackError) {
+          console.error("Fallback course lookup error:", fallbackError);
+        } else if (fallbackData && fallbackData.length > 0) {
+          courseData = fallbackData[0];
+          console.log("Found course in another department:", courseData);
+        }
+      }
       
       console.log("Course lookup result:", { courseData, courseError });
       
