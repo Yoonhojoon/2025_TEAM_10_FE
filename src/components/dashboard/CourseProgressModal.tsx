@@ -76,13 +76,27 @@ const CourseProgressModal = ({ isOpen, onClose, category, categoryKorean }: Cour
           .filter(e => e.courses?.category === categoryKorean)
           .map(e => e.course_id);
         
-        const completed = allCourses.filter(course => 
-          completedCourseIds.includes(course.course_id)
-        );
+        // Get completed courses and sort by grade
+        const completed = allCourses
+          .filter(course => completedCourseIds.includes(course.course_id))
+          .sort((a, b) => {
+            // Handle null grades (place them at the end)
+            if (a.grade === null) return 1;
+            if (b.grade === null) return -1;
+            // Sort by grade ascending
+            return (a.grade || 0) - (b.grade || 0);
+          });
         
-        const remaining = allCourses.filter(course => 
-          !completedCourseIds.includes(course.course_id)
-        );
+        // Get remaining courses and sort by grade
+        const remaining = allCourses
+          .filter(course => !completedCourseIds.includes(course.course_id))
+          .sort((a, b) => {
+            // Handle null grades (place them at the end)
+            if (a.grade === null) return 1;
+            if (b.grade === null) return -1;
+            // Sort by grade ascending
+            return (a.grade || 0) - (b.grade || 0);
+          });
         
         setCompletedCourses(completed);
         setRemainingCourses(remaining);

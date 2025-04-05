@@ -1,5 +1,5 @@
 
-import { Home, Calendar, GraduationCap, BarChart2, Menu, Settings } from "lucide-react";
+import { Home, Calendar, GraduationCap, Menu, Settings } from "lucide-react";
 import { Link, NavLink as RouterNavLink } from "react-router-dom";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
@@ -59,7 +59,6 @@ const Header = () => {
             <NavLink to="/" text="홈" />
             <NavLink to="/schedule" text="시간표 만들기" />
             <NavLink to="/courses" text="수강 기록" />
-            <NavLink to="/dashboard" text="대시보드" />
             <NavLink to="/settings" text="설정" />
           </div>
           
@@ -89,7 +88,6 @@ const Header = () => {
                 <MobileNavLink to="/" text="홈" icon={<Home size={18} />} />
                 <MobileNavLink to="/schedule" text="시간표 만들기" icon={<Calendar size={18} />} />
                 <MobileNavLink to="/courses" text="수강 기록" icon={<GraduationCap size={18} />} />
-                <MobileNavLink to="/dashboard" text="대시보드" icon={<BarChart2 size={18} />} />
                 <MobileNavLink to="/settings" text="설정" icon={<Settings size={18} />} />
                 
                 {!user ? (
