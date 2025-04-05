@@ -19,6 +19,7 @@ interface Course {
 
 interface Schedule {
   name: string;
+  태그?: string[];
   과목들: Array<{
     course_id: string;
     과목_이름: string;
@@ -46,6 +47,7 @@ serve(async (req) => {
     // Set up the Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const openaiApiKey = Deno.env.get('OPENAI_API_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
     const requestBody = await req.json();
@@ -119,122 +121,20 @@ serve(async (req) => {
     
     console.log(`Found ${availableCourses.length} courses matching department and category criteria`);
     
-    // Fetch all prerequisites
-    const { data: prerequisites, error: prerequisitesError } = await supabase
-      .from('prerequisites')
-      .select('*');
-    
-    if (prerequisitesError) {
-      console.log('Error fetching prerequisites:', prerequisitesError.message);
-      // Continue without prerequisites check if there's an error
-    } else {
-      console.log(`Found ${prerequisites.length} prerequisite relationships in total`);
-      
-      // Log detailed prerequisites information
-      if (prerequisites && prerequisites.length > 0) {
-        // Create a map of course IDs to course names to make logs more readable
-        const { data: allCourseNameMap, error: courseMapError } = await supabase
-          .from('courses')
-          .select('course_id, course_name, course_code')
-          .in('course_id', [...new Set([
-            ...prerequisites.map(p => p.course_id),
-            ...prerequisites.map(p => p.prerequisite_course_id)
-          ])]);
-          
-        const courseNameMap: Record<string, string> = {};
-        if (!courseMapError && allCourseNameMap) {
-          allCourseNameMap.forEach(c => {
-            courseNameMap[c.course_id] = `${c.course_name} (${c.course_code})`;
-          });
-        }
-        
-        // Log some sample prerequisite relationships
-        console.log("Sample prerequisite relationships:");
-        prerequisites.slice(0, 10).forEach(prereq => {
-          console.log(`Course ${courseNameMap[prereq.course_id] || prereq.course_id} requires ${courseNameMap[prereq.prerequisite_course_id] || prereq.prerequisite_course_id}`);
-        });
-      }
-    }
-    
     // Filter out courses that the user has already taken OR is currently enrolled in
-    let filteredCourses = availableCourses.filter(course => 
+    const unregisteredCourses = availableCourses.filter(course => 
       !enrolledCourseIds.includes(course.course_id)
     );
     
-    console.log(`After filtering out enrolled courses, ${filteredCourses.length} courses remain`);
+    console.log(`After filtering out enrolled courses, ${unregisteredCourses.length} courses remain`);
     
     // Log the first few courses that remain after filtering (these are the non-taken courses)
     console.log("Sample of available non-taken courses (미이수 과목):");
-    filteredCourses.slice(0, 10).forEach(course => {
+    unregisteredCourses.slice(0, 10).forEach(course => {
       console.log(`- ${course.course_name} (${course.course_code}), category: ${course.category}, credit: ${course.credit}`);
     });
     
-    // Filter out courses where prerequisites haven't been met
-    if (prerequisites) {
-      // Create lookup table for prerequisites
-      const coursePrerequisites: Record<string, string[]> = {};
-      prerequisites.forEach((prereq: Prerequisite) => {
-        if (!coursePrerequisites[prereq.course_id]) {
-          coursePrerequisites[prereq.course_id] = [];
-        }
-        coursePrerequisites[prereq.course_id].push(prereq.prerequisite_course_id);
-      });
-      
-      // Get counts before filtering
-      const coursesBeforePrereqFilter = filteredCourses.length;
-      
-      // Track filtered out courses for logging
-      const filteredOutCourses: Array<{course: Course, missingPrereqs: string[]}> = [];
-      
-      // Filter courses based on prerequisites
-      filteredCourses = filteredCourses.filter(course => {
-        const prereqs = coursePrerequisites[course.course_id];
-        if (!prereqs || prereqs.length === 0) {
-          // No prerequisites for this course
-          return true;
-        }
-        
-        // Check if all prerequisites are in user's enrolled/taken courses
-        const allPrereqsMet = prereqs.every(prereqId => 
-          enrolledCourseIds.includes(prereqId)
-        );
-        
-        if (!allPrereqsMet) {
-          // Log which prerequisites are missing
-          const missingPrereqs = prereqs.filter(prereqId => 
-            !enrolledCourseIds.includes(prereqId)
-          );
-          
-          filteredOutCourses.push({
-            course,
-            missingPrereqs
-          });
-          
-          console.log(`Course ${course.course_name} (${course.course_code}) filtered out due to missing prerequisites: ${missingPrereqs.length} missing`);
-        }
-        
-        return allPrereqsMet;
-      });
-      
-      console.log(`Prerequisite filter removed ${coursesBeforePrereqFilter - filteredCourses.length} courses`);
-      
-      // Detailed log of courses filtered out due to prerequisites
-      if (filteredOutCourses.length > 0) {
-        console.log("Courses filtered out due to prerequisite requirements:");
-        filteredOutCourses.slice(0, 10).forEach(({ course, missingPrereqs }) => {
-          console.log(`- ${course.course_name} (${course.course_code}) - Missing prerequisites: ${missingPrereqs.length}`);
-        });
-      }
-    }
-    
-    // Log final course list (these are the available non-taken courses that meet prerequisites)
-    console.log(`Final list of available non-taken courses (미이수 가능 과목): ${filteredCourses.length} courses`);
-    console.log("Sample courses from final list:");
-    filteredCourses.slice(0, 10).forEach(course => {
-      console.log(`- ${course.course_name} (${course.course_code}), category: ${course.category}, credit: ${course.credit}`);
-    });
-    
-    if (filteredCourses.length === 0) {
+    if (unregisteredCourses.length === 0) {
       return new Response(
         JSON.stringify({ 
           message: '수강 가능한 과목이 없습니다. 모든 과목을 이미 수강했거나, 선수과목을 이수하지 않았거나, 다른 카테고리를 선택해보세요.',
@@ -244,17 +144,178 @@ serve(async (req) => {
       );
     }
     
-    // Generate schedules using simple algorithm with strict time conflict checking
-    const schedules = generateSchedules(filteredCourses, courseOverlapCheckPriority);
+    // Prepare the prompt for OpenAI with the specific format requested
+    const promptContent = `
+      나는 다음 과목들을 사용하여 3개의 최적의 수업 시간표를 만들고 싶습니다:
+      ${unregisteredCourses.map(course => 
+        `- ${course.course_name} (${course.course_code}): ${course.credit}학점, 시간: ${course.schedule_time}, 장소: ${course.classroom || '미정'}`
+      ).join('\n')}
+
+      시간표 생성 규칙:
+      1. 수업 시간이 겹치지 않아야 함
+      2. 각 시간표는 15-21학점 사이여야 함
+      3. 수업이 다양한 요일에 골고루 분산되도록 함
+      4. 가능하면 다양한 과목 유형을 포함해야 함
+
+      다음 JSON 형식으로 정확히 3개의 시간표를 제공해주세요:
+      {
+        "schedules": [
+          {
+            "name": "시간표 옵션 1",
+            "태그": ["균형잡힌", "알찬"],
+            "과목들": [
+              {
+                "course_id": "[course_id]",
+                "과목_이름": "[course_name]",
+                "학수번호": "[course_code]",
+                "학점": [credit],
+                "강의_시간": "[schedule_time]",
+                "강의실": "[classroom]"
+              }
+            ],
+            "총_학점": [sum of credits],
+            "설명": "[이 시간표의 장점에 대한 간략한 설명]"
+          }
+        ]
+      }
+
+      응답에는 JSON만 포함해야 하며 추가 텍스트는 포함하지 않아야 합니다.
+    `;
     
-    return new Response(
-      JSON.stringify({ 
-        schedules,
-        coursesConsidered: filteredCourses.length,
-        message: schedules.length > 0 ? undefined : '시간표를 생성할 수 없습니다. 다른 카테고리를 선택하거나 수강 내역을 확인해주세요.'
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    console.log("Calling OpenAI with prompt for schedule generation");
+    
+    try {
+      // Call OpenAI API
+      const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${openaiApiKey}`
+        },
+        body: JSON.stringify({
+          model: "gpt-4o",
+          messages: [
+            {
+              role: "system",
+              content: "당신은 수업 시간표를 만드는 AI 도우미입니다. 항상 JSON만 응답합니다."
+            },
+            {
+              role: "user",
+              content: promptContent
+            }
+          ],
+          temperature: 0.7,
+          max_tokens: 4000
+        })
+      });
+
+      if (!openaiResponse.ok) {
+        const errorText = await openaiResponse.text();
+        console.error("OpenAI API error:", errorText);
+        throw new Error(`OpenAI API error: ${errorText}`);
+      }
+
+      const openaiData = await openaiResponse.json();
+      console.log("OpenAI response received");
+      
+      // Extract the response content
+      const responseContent = openaiData.choices[0].message.content;
+      console.log("OpenAI raw response:", responseContent);
+      
+      // Parse the JSON from the response
+      // Find JSON content in the response (it might have markdown code blocks or other text)
+      let jsonContent = responseContent;
+      
+      // Try to extract JSON if wrapped in code blocks
+      const jsonRegex = /```(?:json)?([\s\S]*?)```/;
+      const jsonMatch = responseContent.match(jsonRegex);
+      
+      if (jsonMatch && jsonMatch[1]) {
+        jsonContent = jsonMatch[1].trim();
+      }
+      
+      // Parse the JSON
+      let parsedSchedules;
+      try {
+        parsedSchedules = JSON.parse(jsonContent);
+        console.log("Successfully parsed JSON from OpenAI response");
+      } catch (parseError) {
+        console.error("Error parsing JSON from OpenAI response:", parseError);
+        // Try one more time with a more aggressive approach to find valid JSON
+        try {
+          const possibleJson = responseContent.substring(
+            responseContent.indexOf('{'),
+            responseContent.lastIndexOf('}') + 1
+          );
+          parsedSchedules = JSON.parse(possibleJson);
+          console.log("Successfully parsed JSON with fallback method");
+        } catch (fallbackError) {
+          throw new Error("Failed to parse valid JSON from OpenAI response");
+        }
+      }
+      
+      // Process the schedules if found
+      let schedules = [];
+      
+      if (parsedSchedules && parsedSchedules.schedules && Array.isArray(parsedSchedules.schedules)) {
+        schedules = parsedSchedules.schedules;
+        console.log(`Extracted ${schedules.length} schedules from OpenAI response`);
+        
+        // Validate each schedule
+        schedules = schedules.map(schedule => {
+          // Ensure course_id is correctly populated from the original course data
+          if (schedule.과목들 && Array.isArray(schedule.과목들)) {
+            schedule.과목들 = schedule.과목들.map(course => {
+              // Find the corresponding course in our original data to get the real course_id
+              const originalCourse = unregisteredCourses.find(c => 
+                c.course_code === course.학수번호 || 
+                c.course_name === course.과목_이름
+              );
+              
+              if (originalCourse) {
+                return {
+                  ...course,
+                  course_id: originalCourse.course_id
+                };
+              }
+              
+              return course; // Keep as is if not found
+            });
+          }
+          
+          return schedule;
+        });
+      } else {
+        throw new Error("No valid schedules found in OpenAI response");
+      }
+      
+      return new Response(
+        JSON.stringify({ 
+          schedules,
+          coursesConsidered: unregisteredCourses.length,
+          message: schedules.length > 0 ? undefined : '시간표를 생성할 수 없습니다. 다른 카테고리를 선택하거나 수강 내역을 확인해주세요.'
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+      
+    } catch (openaiError) {
+      console.error("Error calling OpenAI:", openaiError);
+      
+      // Fallback to the original schedule generation logic if OpenAI fails
+      console.log("Falling back to algorithm-based schedule generation");
+      
+      // Generate schedules using simple algorithm with strict time conflict checking
+      const schedules = generateSchedules(unregisteredCourses, courseOverlapCheckPriority);
+      
+      return new Response(
+        JSON.stringify({ 
+          schedules,
+          coursesConsidered: unregisteredCourses.length,
+          message: schedules.length > 0 ? undefined : '시간표를 생성할 수 없습니다. 다른 카테고리를 선택하거나 수강 내역을 확인해주세요.'
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
   } catch (error) {
     console.error("Error in generate-schedules function:", error);
     return new Response(
