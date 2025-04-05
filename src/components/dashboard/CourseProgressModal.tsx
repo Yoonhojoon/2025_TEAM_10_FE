@@ -16,7 +16,7 @@ import { DbCourse, Course } from "@/components/courses/types";
 import { Loader2 } from "lucide-react";
 
 // Define valid course categories as a type
-type CourseCategory = "전공필수" | "전공선택" | "전공기초" | "배분이수교과" | "자유이수교과" | "산학필수";
+type CourseCategory = "전공필수" | "전공선택" | "전공기초" | "배분이수교과" | "자유이수교과" | "산학필수" | "기초교과";
 
 interface CourseProgressModalProps {
   isOpen: boolean;

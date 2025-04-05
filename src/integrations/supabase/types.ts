@@ -97,6 +97,7 @@ export type Database = {
       graduation_requirements: {
         Row: {
           department_id: string
+          required_basic_general: number
           required_distribution: number
           required_free: number
           required_major_basic: number
@@ -107,6 +108,7 @@ export type Database = {
         }
         Insert: {
           department_id: string
+          required_basic_general?: number
           required_distribution?: number
           required_free?: number
           required_major_basic?: number
@@ -117,6 +119,7 @@ export type Database = {
         }
         Update: {
           department_id?: string
+          required_basic_general?: number
           required_distribution?: number
           required_free?: number
           required_major_basic?: number
@@ -239,6 +242,7 @@ export type Database = {
         | "배분이수교과"
         | "자유이수교과"
         | "산학필수"
+        | "기초교과"
     }
     CompositeTypes: {
       [_ in never]: never
