@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogCancel } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
@@ -21,7 +20,7 @@ interface AvailableCourse {
 }
 
 interface AvailableCoursesDialogProps {
-  onAddCourse: (course: any) => boolean;
+  onAddCourse: (course: any) => Promise<boolean>;
   onClose?: () => void;
 }
 
@@ -31,6 +30,7 @@ const AvailableCoursesDialog: React.FC<AvailableCoursesDialogProps> = ({ onAddCo
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [isAddingCourse, setIsAddingCourse] = useState<string | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -38,11 +38,9 @@ const AvailableCoursesDialog: React.FC<AvailableCoursesDialogProps> = ({ onAddCo
     const fetchAvailableCourses = async () => {
       setIsLoading(true);
       try {
-        // Get enrolled courses regardless of user status
         let enrolledCourseIds: string[] = [];
         
         if (user) {
-          // If user is logged in, get their enrolled courses
           const { data: enrollments, error: enrollmentsError } = await supabase
             .from('enrollments')
             .select('course_id')
@@ -52,7 +50,6 @@ const AvailableCoursesDialog: React.FC<AvailableCoursesDialogProps> = ({ onAddCo
           enrolledCourseIds = enrollments.map(e => e.course_id);
         }
         
-        // Find "전체" department ID
         const { data: generalDept, error: generalDeptError } = await supabase
           .from('departments')
           .select('department_id')
@@ -63,7 +60,6 @@ const AvailableCoursesDialog: React.FC<AvailableCoursesDialogProps> = ({ onAddCo
         
         const generalDeptId = generalDept?.department_id;
         
-        // Get user department ID if user is logged in
         let userDeptId = null;
         if (user) {
           const { data: userData, error: userError } = await supabase
@@ -77,10 +73,8 @@ const AvailableCoursesDialog: React.FC<AvailableCoursesDialogProps> = ({ onAddCo
           }
         }
         
-        // Build query to get courses from either user's department or '전체' department
         let query = supabase.from('courses').select('*');
         
-        // If we have either user department or general department, filter by them
         const departmentIds = [];
         if (userDeptId) departmentIds.push(userDeptId);
         if (generalDeptId) departmentIds.push(generalDeptId);
@@ -93,7 +87,6 @@ const AvailableCoursesDialog: React.FC<AvailableCoursesDialogProps> = ({ onAddCo
           
         if (coursesError) throw coursesError;
         
-        // Filter out enrolled courses
         const availableCoursesData = coursesData.filter(
           course => !enrolledCourseIds.includes(course.course_id)
         );
@@ -137,48 +130,53 @@ const AvailableCoursesDialog: React.FC<AvailableCoursesDialogProps> = ({ onAddCo
     setFilteredCourses(filtered);
   };
   
-  const handleAddCourse = (course: AvailableCourse) => {
-    const timeSlots = parseScheduleTime(course.schedule_time);
-    
-    if (timeSlots.length === 0) {
-      const added = onAddCourse({
-        id: course.course_id,
-        name: course.course_name,
-        code: course.course_code,
-        credit: course.credit,
-        day: "mon",
-        startTime: "10:00",
-        endTime: "12:00",
-        location: course.classroom || "미정",
-        schedule_time: course.schedule_time
-      });
+  const handleAddCourse = async (course: AvailableCourse) => {
+    setIsAddingCourse(course.course_id);
+    try {
+      const timeSlots = parseScheduleTime(course.schedule_time);
       
-      if (added) {
-        toast({
-          title: "과목 추가 완료",
-          description: `${course.course_name} 과목이 시간표에 추가되었습니다.`,
+      if (timeSlots.length === 0) {
+        const added = await onAddCourse({
+          id: course.course_id,
+          name: course.course_name,
+          code: course.course_code,
+          credit: course.credit,
+          day: "mon",
+          startTime: "10:00",
+          endTime: "12:00",
+          location: course.classroom || "미정",
+          schedule_time: course.schedule_time
         });
-      }
-    } else {
-      const firstSlot = timeSlots[0];
-      const added = onAddCourse({
-        id: course.course_id,
-        name: course.course_name,
-        code: course.course_code,
-        credit: course.credit,
-        day: firstSlot.day,
-        startTime: firstSlot.startTime,
-        endTime: firstSlot.endTime,
-        location: course.classroom || "미정",
-        schedule_time: course.schedule_time
-      });
-      
-      if (added) {
-        toast({
-          title: "과목 추가 완료",
-          description: `${course.course_name} 과목이 시간표에 추가되었습니다.`,
+        
+        if (added) {
+          toast({
+            title: "과목 추가 완료",
+            description: `${course.course_name} 과목이 시간표에 추가되었습니다.`,
+          });
+        }
+      } else {
+        const firstSlot = timeSlots[0];
+        const added = await onAddCourse({
+          id: course.course_id,
+          name: course.course_name,
+          code: course.course_code,
+          credit: course.credit,
+          day: firstSlot.day,
+          startTime: firstSlot.startTime,
+          endTime: firstSlot.endTime,
+          location: course.classroom || "미정",
+          schedule_time: course.schedule_time
         });
+        
+        if (added) {
+          toast({
+            title: "과목 추가 완료",
+            description: `${course.course_name} 과목이 시간표에 추가되었습니다.`,
+          });
+        }
       }
+    } finally {
+      setIsAddingCourse(null);
     }
   };
 
@@ -288,9 +286,14 @@ const AvailableCoursesDialog: React.FC<AvailableCoursesDialogProps> = ({ onAddCo
                       variant="ghost" 
                       size="icon" 
                       onClick={() => handleAddCourse(course)}
+                      disabled={isAddingCourse === course.course_id}
                       title="시간표에 추가"
                     >
-                      <Plus className="w-4 h-4" />
+                      {isAddingCourse === course.course_id ? (
+                        <div className="w-4 h-4 border-2 border-t-transparent border-primary animate-spin rounded-full" />
+                      ) : (
+                        <Plus className="w-4 h-4" />
+                      )}
                     </Button>
                   </div>
                 );

@@ -18,6 +18,7 @@ export type Database = {
           course_name: string
           credit: number
           department_id: string
+          grade: number | null
           schedule_time: string
         }
         Insert: {
@@ -28,6 +29,7 @@ export type Database = {
           course_name: string
           credit: number
           department_id: string
+          grade?: number | null
           schedule_time: string
         }
         Update: {
@@ -38,6 +40,7 @@ export type Database = {
           course_name?: string
           credit?: number
           department_id?: string
+          grade?: number | null
           schedule_time?: string
         }
         Relationships: [
@@ -227,6 +230,69 @@ export type Database = {
           course_name?: string | null
           credit?: number | null
           department_name?: string | null
+          schedule_time?: string | null
+        }
+        Relationships: []
+      }
+      temp_gen_courses_with_names: {
+        Row: {
+          category: string | null
+          classroom: string | null
+          course_code: string | null
+          course_name: string | null
+          credit: number | null
+          department_name: string | null
+          schedule_time: string | null
+        }
+        Insert: {
+          category?: string | null
+          classroom?: string | null
+          course_code?: string | null
+          course_name?: string | null
+          credit?: number | null
+          department_name?: string | null
+          schedule_time?: string | null
+        }
+        Update: {
+          category?: string | null
+          classroom?: string | null
+          course_code?: string | null
+          course_name?: string | null
+          credit?: number | null
+          department_name?: string | null
+          schedule_time?: string | null
+        }
+        Relationships: []
+      }
+      temp_temp_courses: {
+        Row: {
+          category: string | null
+          classroom: string | null
+          course_code: string | null
+          course_name: string | null
+          credit: number | null
+          department_id: string | null
+          grade: number | null
+          schedule_time: string | null
+        }
+        Insert: {
+          category?: string | null
+          classroom?: string | null
+          course_code?: string | null
+          course_name?: string | null
+          credit?: number | null
+          department_id?: string | null
+          grade?: number | null
+          schedule_time?: string | null
+        }
+        Update: {
+          category?: string | null
+          classroom?: string | null
+          course_code?: string | null
+          course_name?: string | null
+          credit?: number | null
+          department_id?: string | null
+          grade?: number | null
           schedule_time?: string | null
         }
         Relationships: []

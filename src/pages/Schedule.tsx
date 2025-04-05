@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState, useEffect } from "react";
 import { useSchedule } from "@/hooks/useSchedule";
 import Footer from "@/components/layout/Footer";
@@ -59,7 +58,6 @@ const Schedule = () => {
   const { user } = useAuth();
   
   useEffect(() => {
-    // Check if this is a shared schedule view
     const urlParams = new URLSearchParams(window.location.search);
     const hasScheduleParam = urlParams.has('schedule');
     
@@ -155,6 +153,11 @@ const Schedule = () => {
 
   const canEdit = user && !isViewOnlyMode;
 
+  const handleAddCourseWrapper = async (course: any) => {
+    const result = await handleAddCourse(course);
+    return result;
+  };
+
   return (
     <div className="flex flex-col min-h-screen">
       <Header />
@@ -229,7 +232,7 @@ const Schedule = () => {
                         </Button>
                       </AlertDialogTrigger>
                       <AvailableCoursesDialog 
-                        onAddCourse={handleAddCourse}
+                        onAddCourse={handleAddCourseWrapper}
                       />
                     </AlertDialog>
                   </div>

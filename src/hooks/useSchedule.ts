@@ -103,12 +103,12 @@ export const useSchedule = () => {
         return { hasAllPrerequisites: true, missingPrerequisites: [] };
       }
       
-      // Now get the prerequisites for this course
+      // Now get the prerequisites for this course with proper column aliasing
       const { data: prerequisites, error: prereqError } = await supabase
         .from('prerequisites')
         .select(`
           prerequisite_course_id,
-          courses:prerequisite_course_id (
+          prerequisite_courses:courses!prerequisites_prerequisite_course_id_fkey (
             course_name,
             course_code
           )
@@ -128,7 +128,7 @@ export const useSchedule = () => {
       // Check if the user has taken all prerequisites
       const missingPrerequisites = prerequisites.filter(
         prereq => !enrolledCourseIds.includes(prereq.prerequisite_course_id)
-      ).map(prereq => prereq.courses);
+      ).map(prereq => prereq.prerequisite_courses);
       
       return {
         hasAllPrerequisites: missingPrerequisites.length === 0,
