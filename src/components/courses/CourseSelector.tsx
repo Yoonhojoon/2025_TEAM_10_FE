@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useState, useEffect } from "react";
@@ -19,6 +20,7 @@ const CourseSelector = ({ onAddCourse }: CourseSelectorProps) => {
   const [dbCourses, setDbCourses] = useState<DbCourse[]>([]);
   const [isLoadingCourses, setIsLoadingCourses] = useState(false);
   const [userDepartmentId, setUserDepartmentId] = useState<string | null>(null);
+  const [generalDepartmentId, setGeneralDepartmentId] = useState<string | null>(null);
   const [departmentError, setDepartmentError] = useState<string | null>(null);
   
   const { toast } = useToast();
@@ -32,6 +34,7 @@ const CourseSelector = ({ onAddCourse }: CourseSelectorProps) => {
       console.log("Fetching department for user ID:", user.id);
       
       try {
+        // Fetch user's department
         const { data, error } = await supabase
           .from('users')
           .select('department_id')
@@ -60,8 +63,22 @@ const CourseSelector = ({ onAddCourse }: CourseSelectorProps) => {
           console.log("No department found for user:", user.id);
           setDepartmentError("사용자의 학과 정보를 찾을 수 없습니다. 프로필 설정을 완료해주세요.");
         }
+        
+        // Fetch "전체" department regardless of user's department
+        const { data: generalDept, error: generalDeptError } = await supabase
+          .from('departments')
+          .select('department_id')
+          .eq('department_name', '전체')
+          .maybeSingle();
+        
+        if (generalDeptError) {
+          console.error("Error fetching general department:", generalDeptError);
+        } else if (generalDept) {
+          console.log("General department ID:", generalDept.department_id);
+          setGeneralDepartmentId(generalDept.department_id);
+        }
       } catch (error) {
-        console.error('Error fetching user department:', error);
+        console.error('Error fetching departments:', error);
         setDepartmentError("학과 정보를 불러오는 데 문제가 발생했습니다.");
       }
     };
@@ -77,25 +94,80 @@ const CourseSelector = ({ onAddCourse }: CourseSelectorProps) => {
       let query = supabase.from('courses').select('*');
       
       if (tabValue === "major-required" && userDepartmentId) {
+        // Include both user department and general department courses
         query = query
-          .eq('department_id', userDepartmentId)
+          .in('department_id', userDepartmentId && generalDepartmentId ? [userDepartmentId, generalDepartmentId] : [userDepartmentId])
           .in('category', ['전공필수', '전공기초']);
           
-        console.log("Fetching major required courses for department:", userDepartmentId);
+        console.log("Fetching major required courses for departments:", userDepartmentId, generalDepartmentId);
       } else if (tabValue === "major-elective" && userDepartmentId) {
+        // Include both user department and general department courses
         query = query
-          .eq('department_id', userDepartmentId)
+          .in('department_id', userDepartmentId && generalDepartmentId ? [userDepartmentId, generalDepartmentId] : [userDepartmentId])
           .eq('category', '전공선택');
           
-        console.log("Fetching major elective courses for department:", userDepartmentId);
+        console.log("Fetching major elective courses for departments:", userDepartmentId, generalDepartmentId);
       } else if (tabValue === "general-required") {
-        query = query.eq('category', '배분이수교과');
+        // For general courses, also include the "전체" department
+        const departmentIds = [];
+        if (userDepartmentId) departmentIds.push(userDepartmentId);
+        if (generalDepartmentId) departmentIds.push(generalDepartmentId);
+        
+        if (departmentIds.length > 0) {
+          query = query
+            .in('department_id', departmentIds)
+            .eq('category', '배분이수교과');
+        } else {
+          query = query.eq('category', '배분이수교과');
+        }
       } else if (tabValue === "general-elective") {
-        query = query.eq('category', '자유이수교과');
+        // For general courses, also include the "전체" department
+        const departmentIds = [];
+        if (userDepartmentId) departmentIds.push(userDepartmentId);
+        if (generalDepartmentId) departmentIds.push(generalDepartmentId);
+        
+        if (departmentIds.length > 0) {
+          query = query
+            .in('department_id', departmentIds)
+            .eq('category', '자유이수교과');
+        } else {
+          query = query.eq('category', '자유이수교과');
+        }
       } else if (tabValue === "industry-required") {
-        query = query.eq('category', '산학필수');
+        // For industry courses, also include the "전체" department
+        const departmentIds = [];
+        if (userDepartmentId) departmentIds.push(userDepartmentId);
+        if (generalDepartmentId) departmentIds.push(generalDepartmentId);
+        
+        if (departmentIds.length > 0) {
+          query = query
+            .in('department_id', departmentIds)
+            .eq('category', '산학필수');
+        } else {
+          query = query.eq('category', '산학필수');
+        }
       } else if (tabValue === "basic-general") {
-        query = query.eq('category', '기초교과');
+        // For basic general courses, also include the "전체" department
+        const departmentIds = [];
+        if (userDepartmentId) departmentIds.push(userDepartmentId);
+        if (generalDepartmentId) departmentIds.push(generalDepartmentId);
+        
+        if (departmentIds.length > 0) {
+          query = query
+            .in('department_id', departmentIds)
+            .eq('category', '기초교과');
+        } else {
+          query = query.eq('category', '기초교과');
+        }
+      } else if (tabValue === "all") {
+        // For "all" tab, include both the user's department and "전체" department
+        const departmentIds = [];
+        if (userDepartmentId) departmentIds.push(userDepartmentId);
+        if (generalDepartmentId) departmentIds.push(generalDepartmentId);
+        
+        if (departmentIds.length > 0) {
+          query = query.in('department_id', departmentIds);
+        }
       }
       
       const { data, error } = await query;

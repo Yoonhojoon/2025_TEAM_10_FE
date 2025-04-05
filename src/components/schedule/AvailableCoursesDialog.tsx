@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogCancel } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
@@ -35,25 +36,64 @@ const AvailableCoursesDialog: React.FC<AvailableCoursesDialogProps> = ({ onAddCo
 
   useEffect(() => {
     const fetchAvailableCourses = async () => {
-      if (!user) return;
-      
       setIsLoading(true);
       try {
-        const { data: enrollments, error: enrollmentsError } = await supabase
-          .from('enrollments')
-          .select('course_id')
-          .eq('user_id', user.id);
+        // Get enrolled courses regardless of user status
+        let enrolledCourseIds: string[] = [];
+        
+        if (user) {
+          // If user is logged in, get their enrolled courses
+          const { data: enrollments, error: enrollmentsError } = await supabase
+            .from('enrollments')
+            .select('course_id')
+            .eq('user_id', user.id);
+            
+          if (enrollmentsError) throw enrollmentsError;
+          enrolledCourseIds = enrollments.map(e => e.course_id);
+        }
+        
+        // Find "전체" department ID
+        const { data: generalDept, error: generalDeptError } = await supabase
+          .from('departments')
+          .select('department_id')
+          .eq('department_name', '전체')
+          .maybeSingle();
           
-        if (enrollmentsError) throw enrollmentsError;
+        if (generalDeptError) throw generalDeptError;
         
-        const enrolledCourseIds = enrollments.map(e => e.course_id);
+        const generalDeptId = generalDept?.department_id;
         
-        const { data: coursesData, error: coursesError } = await supabase
-          .from('courses')
-          .select('*');
+        // Get user department ID if user is logged in
+        let userDeptId = null;
+        if (user) {
+          const { data: userData, error: userError } = await supabase
+            .from('users')
+            .select('department_id')
+            .eq('user_id', user.id)
+            .maybeSingle();
+            
+          if (!userError && userData) {
+            userDeptId = userData.department_id;
+          }
+        }
+        
+        // Build query to get courses from either user's department or '전체' department
+        let query = supabase.from('courses').select('*');
+        
+        // If we have either user department or general department, filter by them
+        const departmentIds = [];
+        if (userDeptId) departmentIds.push(userDeptId);
+        if (generalDeptId) departmentIds.push(generalDeptId);
+        
+        if (departmentIds.length > 0) {
+          query = query.in('department_id', departmentIds);
+        }
+        
+        const { data: coursesData, error: coursesError } = await query;
           
         if (coursesError) throw coursesError;
         
+        // Filter out enrolled courses
         const availableCoursesData = coursesData.filter(
           course => !enrolledCourseIds.includes(course.course_id)
         );

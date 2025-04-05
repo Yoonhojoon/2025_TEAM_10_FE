@@ -43,7 +43,7 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
-    const { userId, takenCourseIds, categories = ["전공필수", "전공선택", "전공기초"] } = await req.json();
+    const { userId, takenCourseIds, categories = ["전공필수", "전공선택", "전공기초"], courseOverlapCheckPriority = true } = await req.json();
     
     if (!userId) {
       return new Response(
@@ -68,11 +68,30 @@ serve(async (req) => {
     
     const departmentId = userData.department_id;
     
-    // Fetch available courses based on department and categories
+    // Fetch "전체" department ID
+    const { data: generalDept, error: generalDeptError } = await supabase
+      .from('departments')
+      .select('department_id')
+      .eq('department_name', '전체')
+      .maybeSingle();
+      
+    if (generalDeptError) {
+      console.log('Error fetching general department:', generalDeptError.message);
+    }
+    
+    const generalDeptId = generalDept?.department_id;
+    
+    // Create an array of department IDs to query
+    const departmentIds = [departmentId];
+    if (generalDeptId) {
+      departmentIds.push(generalDeptId);
+    }
+    
+    // Fetch available courses based on department(s) and categories
     const { data: availableCourses, error: coursesError } = await supabase
       .from('courses')
       .select('*')
-      .eq('department_id', departmentId)
+      .in('department_id', departmentIds)
       .in('category', categories)
       .order('course_name', { ascending: true });
       
@@ -99,7 +118,7 @@ serve(async (req) => {
     }
     
     // Generate schedules using simple algorithm
-    const schedules = generateSchedules(filteredCourses);
+    const schedules = generateSchedules(filteredCourses, courseOverlapCheckPriority);
     
     return new Response(
       JSON.stringify({ 
@@ -118,34 +137,100 @@ serve(async (req) => {
 
 // Helper function to check time conflicts
 function hasTimeConflict(courseA: Course, courseB: Course): boolean {
-  // Simplified implementation for the sample
-  if (courseA.schedule_time === courseB.schedule_time) {
-    return true;
+  // Parse schedule time to extract day and time information
+  const courseAInfo = parseScheduleTime(courseA.schedule_time);
+  const courseBInfo = parseScheduleTime(courseB.schedule_time);
+  
+  // Check for conflicts across all time slots
+  for (const slotA of courseAInfo) {
+    for (const slotB of courseBInfo) {
+      // If not the same day, no conflict
+      if (slotA.day !== slotB.day) continue;
+      
+      // Convert times to minutes for easier comparison
+      const startA = timeToMinutes(slotA.startTime);
+      const endA = timeToMinutes(slotA.endTime);
+      const startB = timeToMinutes(slotB.startTime);
+      const endB = timeToMinutes(slotB.endTime);
+      
+      // Check for overlap
+      if ((startA < endB && endA > startB)) {
+        return true; // Conflict found
+      }
+    }
   }
-  return false;
+  
+  return false; // No conflicts
 }
 
-// Generate schedules using a simple greedy algorithm
-function generateSchedules(courses: Course[]): Schedule[] {
+// Helper to parse schedule time string
+function parseScheduleTime(timeStr: string): Array<{day: string, startTime: string, endTime: string}> {
+  // Default result if parsing fails
+  const defaultResult = [{day: 'mon', startTime: '09:00', endTime: '10:00'}];
+  
+  if (!timeStr) return defaultResult;
+  
+  try {
+    const result = [];
+    const parts = timeStr.split(',').map(p => p.trim());
+    
+    for (const part of parts) {
+      const match = part.match(/([월화수목금]|mon|tue|wed|thu|fri)\s+(\d{1,2}:\d{2})-(\d{1,2}:\d{2})/i);
+      
+      if (match) {
+        const dayKor = match[1];
+        let day: string;
+        
+        // Map Korean day to English abbreviation
+        if (dayKor === '월' || dayKor.toLowerCase() === 'mon') day = 'mon';
+        else if (dayKor === '화' || dayKor.toLowerCase() === 'tue') day = 'tue';
+        else if (dayKor === '수' || dayKor.toLowerCase() === 'wed') day = 'wed';
+        else if (dayKor === '목' || dayKor.toLowerCase() === 'thu') day = 'thu';
+        else if (dayKor === '금' || dayKor.toLowerCase() === 'fri') day = 'fri';
+        else day = 'mon'; // Default if can't parse
+        
+        result.push({
+          day,
+          startTime: match[2],
+          endTime: match[3]
+        });
+      }
+    }
+    
+    return result.length > 0 ? result : defaultResult;
+  } catch (e) {
+    console.error('Error parsing schedule time:', e);
+    return defaultResult;
+  }
+}
+
+// Convert time string (e.g. "14:30") to minutes since midnight
+function timeToMinutes(timeStr: string): number {
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  return hours * 60 + minutes;
+}
+
+// Generate schedules using a simple algorithm that prioritizes avoiding time conflicts
+function generateSchedules(courses: Course[], prioritizeNoConflicts = true): Schedule[] {
   const schedules: Schedule[] = [];
   
   // Let's create 3 schedules with different approaches
   
-  // Schedule 1: Maximize credits
+  // Schedule 1: Maximize credits while avoiding conflicts
   const creditSortedCourses = [...courses].sort((a, b) => b.credit - a.credit);
-  const schedule1 = createSchedule(creditSortedCourses, "최대 학점 시간표");
+  const schedule1 = createSchedule(creditSortedCourses, "최대 학점 시간표", prioritizeNoConflicts);
   if (schedule1.과목들.length > 0) schedules.push(schedule1);
   
   // Schedule 2: Balanced (alternate selecting different categories)
   const categoryCourses = groupByCategory(courses);
-  const schedule2 = createBalancedSchedule(categoryCourses, "균형 잡힌 시간표");
+  const schedule2 = createBalancedSchedule(categoryCourses, "균형 잡힌 시간표", prioritizeNoConflicts);
   if (schedule2.과목들.length > 0) schedules.push(schedule2);
   
   // Schedule 3: Random selection with preference to earlier classes
   const timeSortedCourses = [...courses].sort((a, b) => 
     a.schedule_time.localeCompare(b.schedule_time)
   );
-  const schedule3 = createSchedule(timeSortedCourses, "이른 시간 선호 시간표");
+  const schedule3 = createSchedule(timeSortedCourses, "이른 시간 선호 시간표", prioritizeNoConflicts);
   if (schedule3.과목들.length > 0) schedules.push(schedule3);
   
   return schedules;
