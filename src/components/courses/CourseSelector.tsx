@@ -202,6 +202,17 @@ const CourseSelector = ({ onAddCourse }: CourseSelectorProps) => {
         }
       };
 
+      console.log("Course data:", {
+        name: course.course_name,
+        code: course.course_code,
+        category: course.category,
+        schedule_time: course.schedule_time
+      });
+
+      if (!course.schedule_time) {
+        console.warn("Missing schedule_time for course:", course.course_name);
+      }
+
       console.log("Parsing schedule time:", course.schedule_time);
       const scheduleTimeInfo = course.schedule_time ? course.schedule_time.split(' ') : [];
       let day: "mon" | "tue" | "wed" | "thu" | "fri" = "mon";
@@ -223,6 +234,9 @@ const CourseSelector = ({ onAddCourse }: CourseSelectorProps) => {
         if (timeRange.length === 2) {
           startTime = timeRange[0];
           endTime = timeRange[1];
+          console.log("Time range parsed:", { startTime, endTime });
+        } else {
+          console.warn("Invalid time range format:", scheduleTimeInfo[1]);
         }
       } else {
         console.warn("Invalid schedule time format:", course.schedule_time);
@@ -239,7 +253,7 @@ const CourseSelector = ({ onAddCourse }: CourseSelectorProps) => {
         fromHistory: true
       };
 
-      console.log("Adapted course:", adaptedCourse);
+      console.log("Adapted course for adding:", adaptedCourse);
       onAddCourse(adaptedCourse);
     } catch (error) {
       console.error("Error selecting course:", error, course);

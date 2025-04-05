@@ -76,19 +76,24 @@ export const parseScheduleTime = (scheduleTime: string) => {
 };
 
 const ensureTimeFormat = (time: string): string => {
-  // If time doesn't include seconds, add them
-  if (time.includes(':') && time.split(':').length === 2) {
+  try {
+    // If time doesn't include seconds, add them
+    if (time.includes(':') && time.split(':').length === 2) {
+      return time;
+    }
+    
+    // If time has no colon, assume it's just hours
+    if (!time.includes(':')) {
+      // Pad with leading zero if needed
+      const hours = time.padStart(2, '0');
+      return `${hours}:00`;
+    }
+    
     return time;
+  } catch (error) {
+    console.error("Error formatting time:", error, time);
+    return "00:00"; // Fallback to default time
   }
-  
-  // If time has no colon, assume it's just hours
-  if (!time.includes(':')) {
-    // Pad with leading zero if needed
-    const hours = time.padStart(2, '0');
-    return `${hours}:00`;
-  }
-  
-  return time;
 };
 
 export const getDayLabel = (day: string): string => {

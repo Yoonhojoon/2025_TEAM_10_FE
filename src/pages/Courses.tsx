@@ -1,3 +1,4 @@
+
 import CourseHistoryInput from "@/components/courses/CourseHistoryInput";
 import Footer from "@/components/layout/Footer";
 import Header from "@/components/layout/Header";
@@ -117,16 +118,25 @@ const Courses = () => {
         .eq('course_code', course.code)
         .maybeSingle();
       
+      console.log("Course lookup result:", { courseData, courseError });
+      
       if (courseError) {
-        console.error("Course lookup error:", courseError);
+        console.error("Course lookup error details:", courseError);
         throw courseError;
       }
       
       if (!courseData || !courseData.course_id) {
+        console.error(`No course found with code: ${course.code}`);
         throw new Error(`과목 코드 ${course.code}에 해당하는 과목을 찾을 수 없습니다.`);
       }
       
       console.log("Found course ID:", courseData.course_id);
+      
+      // Adding enrollment
+      console.log("Adding enrollment with:", {
+        user_id: user.id,
+        course_id: courseData.course_id
+      });
       
       const { data: enrollmentData, error: enrollmentError } = await supabase
         .from('enrollments')
@@ -139,10 +149,22 @@ const Courses = () => {
       
       if (enrollmentError) {
         console.error("Enrollment error details:", enrollmentError);
-        throw enrollmentError;
+        // More detailed error information
+        if (enrollmentError.code === '23505') {
+          throw new Error("이 과목을 이미 수강 중입니다. (중복 등록)");
+        } else if (enrollmentError.message) {
+          throw new Error(`등록 중 오류: ${enrollmentError.message}`);
+        } else {
+          throw enrollmentError;
+        }
       }
       
-      console.log("Enrollment successful:", enrollmentData);
+      console.log("Enrollment successful, response data:", enrollmentData);
+      
+      if (!enrollmentData || !enrollmentData.enrollment_id) {
+        console.error("Enrollment succeeded but no ID returned");
+        throw new Error("등록은 성공했으나 등록 ID를 받지 못했습니다.");
+      }
       
       const newCourse = {
         id: enrollmentData.enrollment_id,
