@@ -1,9 +1,10 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { AlertTriangle } from "lucide-react";
 
 interface CategorySelectionModalProps {
   isOpen: boolean;
@@ -19,6 +20,16 @@ const CategorySelectionModal: React.FC<CategorySelectionModalProps> = ({
   const [selectedCategories, setSelectedCategories] = useState<string[]>([
     "전공필수", "전공선택", "전공기초"
   ]);
+  
+  const [showWarning, setShowWarning] = useState(false);
+
+  // 경고 메시지 표시 여부를 결정하는 useEffect
+  useEffect(() => {
+    const hasGeneralCourses = selectedCategories.some(
+      category => category === "배분이수교과" || category === "자유이수교과"
+    );
+    setShowWarning(hasGeneralCourses);
+  }, [selectedCategories]);
 
   const categoryOptions = [
     { value: "전공필수", label: "전공필수" },
@@ -64,6 +75,13 @@ const CategorySelectionModal: React.FC<CategorySelectionModalProps> = ({
             </div>
           ))}
         </div>
+        
+        {showWarning && (
+          <div className="flex items-start space-x-2 p-3 rounded-md bg-red-50 border border-red-200 text-red-700 mb-3">
+            <AlertTriangle className="h-5 w-5 flex-shrink-0 mt-0.5 text-red-500" />
+            <p className="text-sm">배분 이수 및 자유 이수를 포함할 경우, 과목 간 밸런스가 무너진 시간표가 나올 수 있습니다.</p>
+          </div>
+        )}
         
         <DialogFooter>
           <Button type="submit" onClick={handleSubmit}>

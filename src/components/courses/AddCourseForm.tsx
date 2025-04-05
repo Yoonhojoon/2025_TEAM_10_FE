@@ -34,6 +34,15 @@ const AddCourseForm = ({ onClose, onAddCourse }: AddCourseFormProps) => {
     });
   };
 
+  const categoryOptions = [
+    { value: "majorRequired", label: "전공필수" },
+    { value: "majorElective", label: "전공선택" },
+    { value: "generalRequired", label: "배분이수" },
+    { value: "generalElective", label: "자유이수" },
+    { value: "industryRequired", label: "산학필수" },
+    { value: "basicGeneral", label: "기초교과" }
+  ];
+
   return (
     <div className="animate-scale-in">
       <h4 className="font-medium mb-3">새 과목 추가</h4>
@@ -68,11 +77,11 @@ const AddCourseForm = ({ onClose, onAddCourse }: AddCourseFormProps) => {
             onChange={handleInputChange}
             className="w-full p-2 border rounded-md"
           >
-            <option value="majorRequired">전공필수</option>
-            <option value="majorElective">전공선택</option>
-            <option value="generalRequired">교양필수</option>
-            <option value="generalElective">교양선택</option>
-            <option value="industryRequired">산학필수</option>
+            {categoryOptions.map(option => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </select>
         </div>
         <div>

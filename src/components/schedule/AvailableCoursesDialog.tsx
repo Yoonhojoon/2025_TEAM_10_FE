@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogCancel } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
@@ -62,7 +61,7 @@ const AvailableCoursesDialog: React.FC<AvailableCoursesDialogProps> = ({ onAddCo
         setAvailableCourses(availableCoursesData);
         setFilteredCourses(availableCoursesData);
       } catch (error) {
-        console.error("Error fetching available courses:", error);
+        console.error('Error fetching available courses:', error);
         toast({
           title: "데이터 로딩 오류",
           description: "과목 목록을 불러오는데 문제가 발생했습니다.",
@@ -142,16 +141,25 @@ const AvailableCoursesDialog: React.FC<AvailableCoursesDialogProps> = ({ onAddCo
       }
     }
   };
-  
-  const mapCategoryLabel = (category: string): string => {
+
+  const getCategoryBadge = (category: string): { label: string, color: string } => {
     switch (category) {
-      case "전공필수": return "전공 필수";
-      case "전공기초": return "전공 기초";
-      case "전공선택": return "전공 선택";
-      case "배분이수교과": return "배분 이수";
-      case "자유이수교과": return "자유 이수";
-      case "산학필수": return "산학 필수";
-      default: return "일반 선택";
+      case "전공필수":
+        return { label: "전필", color: "bg-blue-100 text-blue-800" };
+      case "전공기초":
+        return { label: "전기", color: "bg-indigo-100 text-indigo-800" };
+      case "전공선택":
+        return { label: "전선", color: "bg-purple-100 text-purple-800" };
+      case "배분이수교과":
+        return { label: "배분", color: "bg-green-100 text-green-800" };
+      case "자유이수교과":
+        return { label: "자유", color: "bg-amber-100 text-amber-800" };
+      case "산학필수":
+        return { label: "산학", color: "bg-orange-100 text-orange-800" };
+      case "기초교과":
+        return { label: "기초", color: "bg-cyan-100 text-cyan-800" };
+      default:
+        return { label: "기타", color: "bg-gray-100 text-gray-800" };
     }
   };
 
@@ -162,7 +170,8 @@ const AvailableCoursesDialog: React.FC<AvailableCoursesDialogProps> = ({ onAddCo
     { value: "전공선택", label: "전공 선택" },
     { value: "배분이수교과", label: "배분 이수" },
     { value: "자유이수교과", label: "자유 이수" },
-    { value: "산학필수", label: "산학 필수" }
+    { value: "산학필수", label: "산학 필수" },
+    { value: "기초교과", label: "기초 교과" }
   ];
   
   return (
@@ -216,33 +225,36 @@ const AvailableCoursesDialog: React.FC<AvailableCoursesDialogProps> = ({ onAddCo
                 검색 결과가 없습니다.
               </div>
             ) : (
-              filteredCourses.map((course) => (
-                <div 
-                  key={course.course_id} 
-                  className="p-4 border rounded-md flex justify-between items-center hover:bg-accent/30 transition-colors"
-                >
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{course.course_name}</span>
-                      <span className="text-xs bg-secondary px-2 py-0.5 rounded-full">
-                        {mapCategoryLabel(course.category)}
-                      </span>
-                    </div>
-                    <div className="text-sm text-muted-foreground mt-1">{course.course_code} · {course.credit}학점</div>
-                    {course.schedule_time && (
-                      <div className="text-sm mt-1">{course.schedule_time}</div>
-                    )}
-                  </div>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    onClick={() => handleAddCourse(course)}
-                    title="시간표에 추가"
+              filteredCourses.map((course) => {
+                const categoryBadge = getCategoryBadge(course.category);
+                return (
+                  <div 
+                    key={course.course_id} 
+                    className="p-4 border rounded-md flex justify-between items-center hover:bg-accent/30 transition-colors"
                   >
-                    <Plus className="w-4 h-4" />
-                  </Button>
-                </div>
-              ))
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{course.course_name}</span>
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${categoryBadge.color}`}>
+                          {categoryBadge.label}
+                        </span>
+                      </div>
+                      <div className="text-sm text-muted-foreground mt-1">{course.course_code} · {course.credit}학점</div>
+                      {course.schedule_time && (
+                        <div className="text-sm mt-1">{course.schedule_time}</div>
+                      )}
+                    </div>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => handleAddCourse(course)}
+                      title="시간표에 추가"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </Button>
+                  </div>
+                );
+              })
             )}
           </div>
         )}
