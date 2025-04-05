@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useToast } from "@/hooks/use-toast";
@@ -143,6 +144,33 @@ export const useSchedule = () => {
       console.error('Error checking prerequisites:', error);
       return { hasAllPrerequisites: true, missingPrerequisites: [] };
     }
+  };
+
+  // New function to check all prerequisites at once
+  const checkAllPrerequisites = async () => {
+    if (!user || courses.length === 0) {
+      return [];
+    }
+    
+    const warnings = [];
+    const uniqueCourseCodes = Array.from(new Set(courses.map(course => course.code)));
+    
+    for (const code of uniqueCourseCodes) {
+      const { hasAllPrerequisites, missingPrerequisites } = await checkPrerequisites(code);
+      
+      if (!hasAllPrerequisites && missingPrerequisites.length > 0) {
+        const course = courses.find(c => c.code === code);
+        if (course) {
+          warnings.push({
+            courseCode: code,
+            courseName: course.name,
+            missingPrerequisites
+          });
+        }
+      }
+    }
+    
+    return warnings;
   };
   
   const handleAddCourse = async (course: Omit<ScheduleCourse, "id">) => {
@@ -605,6 +633,7 @@ export const useSchedule = () => {
     handleSaveSchedule,
     handleDeleteSchedule,
     setCourses,
-    checkPrerequisites
+    checkPrerequisites,
+    checkAllPrerequisites
   };
 };

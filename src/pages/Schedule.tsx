@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState, useEffect } from "react";
 import { useSchedule } from "@/hooks/useSchedule";
 import Footer from "@/components/layout/Footer";
@@ -50,7 +49,8 @@ const Schedule = () => {
     handleSaveSchedule,
     handleDeleteSchedule,
     setCourses,
-    checkPrerequisites
+    checkPrerequisites,
+    checkAllPrerequisites
   } = useSchedule();
   
   const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
@@ -87,38 +87,17 @@ const Schedule = () => {
   }, [setCourses, toast]);
 
   useEffect(() => {
-    const checkAllPrerequisites = async () => {
-      if (!user || courses.length === 0) {
-        setPrerequisiteWarnings([]);
-        return;
+    const checkPrerequisitesForCourses = async () => {
+      if (!isViewOnlyMode) {
+        const warnings = await checkAllPrerequisites();
+        setPrerequisiteWarnings(warnings);
+      } else {
+        setPrerequisiteWarnings([]); // Clear warnings in view-only mode
       }
-
-      const warnings: PrerequisiteWarning[] = [];
-      
-      const uniqueCourseCodes = Array.from(new Set(courses.map(course => course.code)));
-      
-      for (const code of uniqueCourseCodes) {
-        const { hasAllPrerequisites, missingPrerequisites } = await checkPrerequisites(code);
-        
-        if (!hasAllPrerequisites && missingPrerequisites.length > 0) {
-          const course = courses.find(c => c.code === code);
-          if (course) {
-            warnings.push({
-              courseCode: code,
-              courseName: course.name,
-              missingPrerequisites
-            });
-          }
-        }
-      }
-      
-      setPrerequisiteWarnings(warnings);
     };
     
-    if (!isViewOnlyMode) {
-      checkAllPrerequisites();
-    }
-  }, [courses, user, checkPrerequisites, isViewOnlyMode]);
+    checkPrerequisitesForCourses();
+  }, [courses, checkAllPrerequisites, isViewOnlyMode]);
   
   const currentSchedule = {
     name: isViewOnlyMode ? "공유된 시간표" : "현재 시간표",
@@ -194,6 +173,10 @@ const Schedule = () => {
 
   const handleAddCourseWrapper = async (course: any) => {
     const result = await handleAddCourse(course);
+    if (result) {
+      const warnings = await checkAllPrerequisites();
+      setPrerequisiteWarnings(warnings);
+    }
     return result;
   };
 
