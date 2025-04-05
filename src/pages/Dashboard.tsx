@@ -4,7 +4,7 @@ import ProgressDashboard from "@/components/dashboard/ProgressDashboard";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import GraduationRequirementsModal from "@/components/dashboard/GraduationRequirementsModal";
-import { BookOpenCheck, Settings, CirclePercent } from "lucide-react";
+import { BookOpenCheck, Settings } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { CircularProgress } from "@/components/common/CircularProgress";
@@ -16,8 +16,10 @@ interface ProgressData {
   overall: number;
   majorRequired: number;
   majorElective: number;
+  majorBasic: number;
   generalRequired: number;
   generalElective: number;
+  industryRequired: number;
   totalCredits: number;
   requiredCredits: number;
   majorCredits: number;
@@ -33,8 +35,10 @@ const Dashboard = () => {
     overall: 0,
     majorRequired: 0,
     majorElective: 0,
+    majorBasic: 0,
     generalRequired: 0,
     generalElective: 0,
+    industryRequired: 0,
     totalCredits: 0,
     requiredCredits: 0,
     majorCredits: 0,
@@ -116,8 +120,10 @@ const Dashboard = () => {
           overall: 65,
           majorRequired: 80,
           majorElective: 60,
+          majorBasic: 50,
           generalRequired: 90,
           generalElective: 45,
+          industryRequired: 30,
           totalCredits: 78,
           requiredCredits: 120,
           majorCredits: 40,
@@ -155,6 +161,7 @@ const Dashboard = () => {
         let majorBasicCredits = 0;
         let distributionCredits = 0;
         let freeCredits = 0;
+        let industryRequiredCredits = 0;
         
         enrollmentsData.forEach((enrollment: any) => {
           const course = enrollment.courses;
@@ -177,6 +184,9 @@ const Dashboard = () => {
             case '배분이수교과':
               distributionCredits += credit;
               break;
+            case '산학필수':
+              industryRequiredCredits += credit;
+              break;
             default: // 자유이수교과 또는 기타
               freeCredits += credit;
               break;
@@ -189,9 +199,10 @@ const Dashboard = () => {
         console.log("Major basic credits:", majorBasicCredits);
         console.log("Distribution credits:", distributionCredits);
         console.log("Free credits:", freeCredits);
+        console.log("Industry required credits:", industryRequiredCredits);
 
         // 전체 전공 학점 및 전체 교양 학점 계산
-        const majorCredits = majorRequiredCredits + majorElectiveCredits + majorBasicCredits;
+        const majorCredits = majorRequiredCredits + majorElectiveCredits + majorBasicCredits + industryRequiredCredits;
         const generalCredits = distributionCredits + freeCredits;
         
         // 전체 필수 학점 계산
@@ -205,8 +216,10 @@ const Dashboard = () => {
         // 진행률 계산
         const majorRequiredPercent = Math.min(Math.round((majorRequiredCredits / Math.max(requirements.required_major_required, 1)) * 100), 100);
         const majorElectivePercent = Math.min(Math.round((majorElectiveCredits / Math.max(requirements.required_major_elective, 1)) * 100), 100);
+        const majorBasicPercent = Math.min(Math.round((majorBasicCredits / Math.max(requirements.required_major_basic, 1)) * 100), 100);
         const generalRequiredPercent = Math.min(Math.round((distributionCredits / Math.max(requirements.required_distribution, 1)) * 100), 100);
         const generalElectivePercent = Math.min(Math.round((freeCredits / Math.max(requirements.required_free, 1)) * 100), 100);
+        const industryRequiredPercent = Math.min(Math.round((industryRequiredCredits / 12) * 100), 100); // Assuming 12 credits required for industry
         
         // 전체 진행률 계산
         const overall = Math.min(Math.round((totalCredits / requirements.required_total_credits) * 100), 100);
@@ -215,8 +228,10 @@ const Dashboard = () => {
           overall,
           majorRequired: majorRequiredPercent,
           majorElective: majorElectivePercent,
+          majorBasic: majorBasicPercent,
           generalRequired: generalRequiredPercent,
           generalElective: generalElectivePercent,
+          industryRequired: industryRequiredPercent,
           totalCredits,
           requiredCredits: requirements.required_total_credits,
           majorCredits,

@@ -3,7 +3,7 @@ export interface Course {
   id: string;
   code: string;
   name: string;
-  category: "majorRequired" | "majorElective" | "generalRequired" | "generalElective" | "industryRequired";
+  category: "majorRequired" | "majorElective" | "majorBasic" | "generalRequired" | "generalElective" | "industryRequired";
   credit: number;
 }
 

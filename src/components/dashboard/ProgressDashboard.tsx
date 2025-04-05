@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ProgressBar } from "@/components/common/ProgressBar";
 import { ArrowUpRight, Award, BookOpen, GraduationCap, Layers } from "lucide-react";
 import { Link } from "react-router-dom";
+import { Course } from "../courses/types";
 
 interface ProgressData {
   overall: number;
@@ -10,6 +11,8 @@ interface ProgressData {
   majorElective: number;
   generalRequired: number;
   generalElective: number;
+  industryRequired: number;
+  majorBasic: number;
   totalCredits: number;
   requiredCredits: number;
   majorCredits: number;
@@ -22,13 +25,17 @@ const ProgressDashboard = ({ data }: { data: ProgressData }) => {
   // Calculate creditValues based on estimates from the percentages and required credits
   const majorRequiredCredits = Math.round(data.requiredMajorCredits * (data.majorRequired / 100));
   const majorElectiveCredits = Math.round(data.requiredMajorCredits * (data.majorElective / 100));
+  const majorBasicCredits = Math.round(data.requiredMajorCredits * (data.majorBasic / 100));
   const generalRequiredCredits = Math.round(data.requiredGeneralCredits * (data.generalRequired / 100));
   const generalElectiveCredits = Math.round(data.requiredGeneralCredits * (data.generalElective / 100));
+  const industryRequiredCredits = Math.round(data.requiredMajorCredits * (data.industryRequired / 100));
 
   const requiredMajorRequiredCredits = Math.round(data.requiredMajorCredits * 0.45); // Approximately for required major courses
   const requiredMajorElectiveCredits = Math.round(data.requiredMajorCredits * 0.55); // Approximately for elective major courses
+  const requiredMajorBasicCredits = Math.round(data.requiredMajorCredits * 0.2);
   const requiredGenRequiredCredits = Math.round(data.requiredGeneralCredits * 0.7); // Approximately for required general courses
   const requiredGenElectiveCredits = Math.round(data.requiredGeneralCredits * 0.3); // Approximately for elective general courses
+  const requiredIndustryCredits = Math.round(data.requiredMajorCredits * 0.15);
 
   return (
     <div className="space-y-6">
@@ -44,12 +51,6 @@ const ProgressDashboard = ({ data }: { data: ProgressData }) => {
                 <GraduationCap className="h-5 w-5 text-primary" />
               </div>
             </div>
-            <ProgressBar 
-              value={data.overall} 
-              className="mt-4" 
-              size="md" 
-              variant={data.overall >= 75 ? "success" : "default"}
-            />
           </CardContent>
         </Card>
         
@@ -64,13 +65,6 @@ const ProgressDashboard = ({ data }: { data: ProgressData }) => {
                 <Layers className="h-5 w-5 text-emerald-500" />
               </div>
             </div>
-            <ProgressBar 
-              value={data.totalCredits} 
-              max={data.requiredCredits} 
-              className="mt-4" 
-              size="md" 
-              variant="success"
-            />
           </CardContent>
         </Card>
         
@@ -85,12 +79,6 @@ const ProgressDashboard = ({ data }: { data: ProgressData }) => {
                 <BookOpen className="h-5 w-5 text-amber-500" />
               </div>
             </div>
-            <ProgressBar 
-              value={data.majorRequired} 
-              className="mt-4" 
-              size="md" 
-              variant="warning"
-            />
           </CardContent>
         </Card>
         
@@ -128,7 +116,7 @@ const ProgressDashboard = ({ data }: { data: ProgressData }) => {
             <div className="space-y-6">
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
-                  <h4 className="font-medium">전공 필수</h4>
+                  <h4 className="font-medium">전공필수</h4>
                   <span className="text-sm font-medium">{data.majorRequired}%</span>
                 </div>
                 <ProgressBar 
@@ -142,7 +130,7 @@ const ProgressDashboard = ({ data }: { data: ProgressData }) => {
               
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
-                  <h4 className="font-medium">전공 선택</h4>
+                  <h4 className="font-medium">전공선택</h4>
                   <span className="text-sm font-medium">{data.majorElective}%</span>
                 </div>
                 <ProgressBar 
@@ -156,7 +144,35 @@ const ProgressDashboard = ({ data }: { data: ProgressData }) => {
               
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
-                  <h4 className="font-medium">교양 필수</h4>
+                  <h4 className="font-medium">전공기초</h4>
+                  <span className="text-sm font-medium">{data.majorBasic}%</span>
+                </div>
+                <ProgressBar 
+                  value={data.majorBasic}
+                  variant={data.majorBasic >= 100 ? "success" : "default"}
+                />
+                <div className="text-sm text-muted-foreground text-right mt-1">
+                  {majorBasicCredits} / {requiredMajorBasicCredits} 학점
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <h4 className="font-medium">산학필수</h4>
+                  <span className="text-sm font-medium">{data.industryRequired}%</span>
+                </div>
+                <ProgressBar 
+                  value={data.industryRequired}
+                  variant={data.industryRequired >= 100 ? "success" : "warning"}
+                />
+                <div className="text-sm text-muted-foreground text-right mt-1">
+                  {industryRequiredCredits} / {requiredIndustryCredits} 학점
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <h4 className="font-medium">배분이수교과</h4>
                   <span className="text-sm font-medium">{data.generalRequired}%</span>
                 </div>
                 <ProgressBar 
@@ -170,7 +186,7 @@ const ProgressDashboard = ({ data }: { data: ProgressData }) => {
               
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
-                  <h4 className="font-medium">교양 선택</h4>
+                  <h4 className="font-medium">자유이수교과</h4>
                   <span className="text-sm font-medium">{data.generalElective}%</span>
                 </div>
                 <ProgressBar 
