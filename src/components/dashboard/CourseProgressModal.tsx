@@ -15,11 +15,14 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { DbCourse, Course } from "@/components/courses/types";
 import { Loader2 } from "lucide-react";
 
+// Define valid course categories as a type
+type CourseCategory = "전공필수" | "전공선택" | "전공기초" | "배분이수교과" | "자유이수교과" | "산학필수";
+
 interface CourseProgressModalProps {
   isOpen: boolean;
   onClose: () => void;
-  category: string;
-  categoryKorean: string;
+  category: string; // This is the English category from ProgressDashboard
+  categoryKorean: string; // This is already the Korean category
 }
 
 const CourseProgressModal = ({ isOpen, onClose, category, categoryKorean }: CourseProgressModalProps) => {
@@ -59,17 +62,20 @@ const CourseProgressModal = ({ isOpen, onClose, category, categoryKorean }: Cour
         if (departmentError) throw departmentError;
         
         // 3. 학과의 모든 과목 불러오기 (해당 카테고리의)
+        // Make sure categoryKorean is a valid CourseCategory
+        const validCategory = categoryKorean as CourseCategory;
+        
         const { data: allCourses, error: coursesError } = await supabase
           .from('courses')
           .select('*')
           .eq('department_id', departmentData.department_id)
-          .eq('category', categoryKorean);
+          .eq('category', validCategory);
           
         if (coursesError) throw coursesError;
         
         // 4. 이미 들은 과목과 아직 듣지 않은 과목으로 분류
         const completedCourseIds = enrollments
-          .filter(e => e.courses?.category === categoryKorean)
+          .filter(e => e.courses?.category === validCategory)
           .map(e => e.course_id);
         
         const completed = allCourses.filter(course => 
