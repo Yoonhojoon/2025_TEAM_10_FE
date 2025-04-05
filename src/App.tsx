@@ -29,11 +29,7 @@ function App() {
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/auth" element={<Auth />} />
-                <Route path="/schedule" element={
-                  <RequireAuth>
-                    <Schedule />
-                  </RequireAuth>
-                } />
+                <Route path="/schedule" element={<Schedule />} />
                 <Route path="/courses" element={
                   <RequireAuth>
                     <Courses />
