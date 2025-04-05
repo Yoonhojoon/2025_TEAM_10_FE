@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useState, useEffect } from "react";
@@ -34,7 +33,6 @@ const CourseSelector = ({ onAddCourse }: CourseSelectorProps) => {
       console.log("Fetching department for user ID:", user.id);
       
       try {
-        // Fetch user's department
         const { data, error } = await supabase
           .from('users')
           .select('department_id')
@@ -64,7 +62,6 @@ const CourseSelector = ({ onAddCourse }: CourseSelectorProps) => {
           setDepartmentError("사용자의 학과 정보를 찾을 수 없습니다. 프로필 설정을 완료해주세요.");
         }
         
-        // Fetch "전체" department regardless of user's department
         const { data: generalDept, error: generalDeptError } = await supabase
           .from('departments')
           .select('department_id')
@@ -94,21 +91,14 @@ const CourseSelector = ({ onAddCourse }: CourseSelectorProps) => {
       let query = supabase.from('courses').select('*');
       
       if (tabValue === "major-required" && userDepartmentId) {
-        // Include both user department and general department courses
         query = query
           .in('department_id', userDepartmentId && generalDepartmentId ? [userDepartmentId, generalDepartmentId] : [userDepartmentId])
           .in('category', ['전공필수', '전공기초']);
-          
-        console.log("Fetching major required courses for departments:", userDepartmentId, generalDepartmentId);
       } else if (tabValue === "major-elective" && userDepartmentId) {
-        // Include both user department and general department courses
         query = query
           .in('department_id', userDepartmentId && generalDepartmentId ? [userDepartmentId, generalDepartmentId] : [userDepartmentId])
           .eq('category', '전공선택');
-          
-        console.log("Fetching major elective courses for departments:", userDepartmentId, generalDepartmentId);
       } else if (tabValue === "general-required") {
-        // For general courses, also include the "전체" department
         const departmentIds = [];
         if (userDepartmentId) departmentIds.push(userDepartmentId);
         if (generalDepartmentId) departmentIds.push(generalDepartmentId);
@@ -121,7 +111,6 @@ const CourseSelector = ({ onAddCourse }: CourseSelectorProps) => {
           query = query.eq('category', '배분이수교과');
         }
       } else if (tabValue === "general-elective") {
-        // For general courses, also include the "전체" department
         const departmentIds = [];
         if (userDepartmentId) departmentIds.push(userDepartmentId);
         if (generalDepartmentId) departmentIds.push(generalDepartmentId);
@@ -134,7 +123,6 @@ const CourseSelector = ({ onAddCourse }: CourseSelectorProps) => {
           query = query.eq('category', '자유이수교과');
         }
       } else if (tabValue === "industry-required") {
-        // For industry courses, also include the "전체" department
         const departmentIds = [];
         if (userDepartmentId) departmentIds.push(userDepartmentId);
         if (generalDepartmentId) departmentIds.push(generalDepartmentId);
@@ -147,7 +135,6 @@ const CourseSelector = ({ onAddCourse }: CourseSelectorProps) => {
           query = query.eq('category', '산학필수');
         }
       } else if (tabValue === "basic-general") {
-        // For basic general courses, also include the "전체" department
         const departmentIds = [];
         if (userDepartmentId) departmentIds.push(userDepartmentId);
         if (generalDepartmentId) departmentIds.push(generalDepartmentId);
@@ -160,7 +147,6 @@ const CourseSelector = ({ onAddCourse }: CourseSelectorProps) => {
           query = query.eq('category', '기초교과');
         }
       } else if (tabValue === "all") {
-        // For "all" tab, include both the user's department and "전체" department
         const departmentIds = [];
         if (userDepartmentId) departmentIds.push(userDepartmentId);
         if (generalDepartmentId) departmentIds.push(generalDepartmentId);
@@ -193,58 +179,76 @@ const CourseSelector = ({ onAddCourse }: CourseSelectorProps) => {
   };
 
   const selectCourseFromDb = (course: DbCourse) => {
-    const mappedCategory = (): "majorRequired" | "majorElective" | "generalRequired" | "generalElective" | "industryRequired" | "basicGeneral" => {
-      switch (course.category) {
-        case "전공필수":
-        case "전공기초":
-          return "majorRequired";
-        case "전공선택":
-          return "majorElective";
-        case "배분이수교과":
-          return "generalRequired";
-        case "자유이수교과":
-          return "generalElective";
-        case "산학필수":
-          return "industryRequired";
-        case "기초교과":
-          return "basicGeneral";
-        default:
-          return "generalElective";
-      }
-    };
-
-    const scheduleTimeInfo = course.schedule_time.split(' ');
-    let day: "mon" | "tue" | "wed" | "thu" | "fri" = "mon";
-    let startTime = "10:00";
-    let endTime = "12:00";
-    
-    if (scheduleTimeInfo.length >= 2) {
-      const dayMapping: Record<string, "mon" | "tue" | "wed" | "thu" | "fri"> = {
-        "월": "mon", "화": "tue", "수": "wed", "목": "thu", "금": "fri",
-        "mon": "mon", "tue": "tue", "wed": "wed", "thu": "thu", "fri": "fri"
+    try {
+      console.log("Selecting course from DB:", course);
+      
+      const mappedCategory = (): "majorRequired" | "majorElective" | "generalRequired" | "generalElective" | "industryRequired" | "basicGeneral" => {
+        switch (course.category) {
+          case "전공필수":
+          case "전공기초":
+            return "majorRequired";
+          case "전공선택":
+            return "majorElective";
+          case "배분이수교과":
+            return "generalRequired";
+          case "자유이수교과":
+            return "generalElective";
+          case "산학필수":
+            return "industryRequired";
+          case "기초교과":
+            return "basicGeneral";
+          default:
+            return "generalElective";
+        }
       };
+
+      console.log("Parsing schedule time:", course.schedule_time);
+      const scheduleTimeInfo = course.schedule_time ? course.schedule_time.split(' ') : [];
+      let day: "mon" | "tue" | "wed" | "thu" | "fri" = "mon";
+      let startTime = "10:00";
+      let endTime = "12:00";
       
-      day = dayMapping[scheduleTimeInfo[0].toLowerCase()] || "mon";
-      
-      const timeRange = scheduleTimeInfo[1].split('-');
-      if (timeRange.length === 2) {
-        startTime = timeRange[0];
-        endTime = timeRange[1];
+      if (scheduleTimeInfo.length >= 2) {
+        const dayMapping: Record<string, "mon" | "tue" | "wed" | "thu" | "fri"> = {
+          "월": "mon", "화": "tue", "수": "wed", "목": "thu", "금": "fri",
+          "mon": "mon", "tue": "tue", "wed": "wed", "thu": "thu", "fri": "fri"
+        };
+        
+        const rawDay = scheduleTimeInfo[0].toLowerCase();
+        day = dayMapping[rawDay] || "mon";
+        
+        console.log("Day mapping:", rawDay, "->", day);
+        
+        const timeRange = scheduleTimeInfo[1].split('-');
+        if (timeRange.length === 2) {
+          startTime = timeRange[0];
+          endTime = timeRange[1];
+        }
+      } else {
+        console.warn("Invalid schedule time format:", course.schedule_time);
       }
+
+      const adaptedCourse: Omit<ScheduleCourse, "id"> = {
+        name: course.course_name,
+        code: course.course_code,
+        credit: course.credit,
+        day: day,
+        startTime: startTime,
+        endTime: endTime,
+        location: course.classroom || "미정",
+        fromHistory: true
+      };
+
+      console.log("Adapted course:", adaptedCourse);
+      onAddCourse(adaptedCourse);
+    } catch (error) {
+      console.error("Error selecting course:", error, course);
+      toast({
+        title: "과목 추가 오류",
+        description: `과목을 추가하는 중 오류가 발생했습니다: ${course.course_name}`,
+        variant: "destructive",
+      });
     }
-
-    const adaptedCourse: Omit<ScheduleCourse, "id"> = {
-      name: course.course_name,
-      code: course.course_code,
-      credit: course.credit,
-      day: day,
-      startTime: startTime,
-      endTime: endTime,
-      location: course.classroom || "미정",
-      fromHistory: true
-    };
-
-    onAddCourse(adaptedCourse);
   };
 
   const handleAddManualCourse = (course: Omit<Course, "id">) => {

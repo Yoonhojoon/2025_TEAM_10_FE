@@ -115,11 +115,15 @@ const Courses = () => {
         .from('courses')
         .select('course_id')
         .eq('course_code', course.code)
-        .single();
+        .maybeSingle();
       
       if (courseError) {
         console.error("Course lookup error:", courseError);
         throw courseError;
+      }
+      
+      if (!courseData || !courseData.course_id) {
+        throw new Error(`과목 코드 ${course.code}에 해당하는 과목을 찾을 수 없습니다.`);
       }
       
       console.log("Found course ID:", courseData.course_id);
@@ -152,9 +156,15 @@ const Courses = () => {
       });
     } catch (error) {
       console.error("Error adding course:", error);
+      let errorMessage = "과목을 추가하는 중 문제가 발생했습니다.";
+      
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      
       toast({
         title: "과목 추가 오류",
-        description: "과목을 추가하는 중 문제가 발생했습니다.",
+        description: errorMessage,
         variant: "destructive",
       });
     }

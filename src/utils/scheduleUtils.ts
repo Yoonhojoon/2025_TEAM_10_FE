@@ -1,4 +1,3 @@
-
 import { v4 as uuidv4 } from "uuid";
 
 export interface TimeSlot {
@@ -7,60 +6,89 @@ export interface TimeSlot {
   endTime: string;
 }
 
-export const parseScheduleTime = (scheduleTime: string): TimeSlot[] => {
+export const parseScheduleTime = (scheduleTime: string) => {
   try {
-    const koreanDayMap: Record<string, "mon" | "tue" | "wed" | "thu" | "fri"> = {
-      "월": "mon",
-      "화": "tue",
-      "수": "wed",
-      "목": "thu",
-      "금": "fri",
-    };
+    console.log("Parsing schedule time:", scheduleTime);
+    if (!scheduleTime || typeof scheduleTime !== 'string') {
+      console.warn("Invalid schedule time input:", scheduleTime);
+      return [];
+    }
     
-    const englishDayMap: Record<string, "mon" | "tue" | "wed" | "thu" | "fri"> = {
-      "mon": "mon",
-      "tue": "tue",
-      "wed": "wed",
-      "thu": "thu",
-      "fri": "fri",
-    };
-    
-    const result: TimeSlot[] = [];
-    
+    // Handle multiple schedule times (e.g. "월 10:00-12:00, 수 14:00-16:00")
     const schedules = scheduleTime.split(',').map(s => s.trim());
+    const result = [];
     
     for (const schedule of schedules) {
+      console.log("Processing schedule part:", schedule);
       const parts = schedule.split(' ');
-      if (parts.length !== 2) continue;
       
-      const dayStr = parts[0].toLowerCase();
-      const timeRange = parts[1].split('-');
-      if (timeRange.length !== 2) continue;
-      
-      let day: "mon" | "tue" | "wed" | "thu" | "fri";
-      
-      if (koreanDayMap[parts[0]]) {
-        day = koreanDayMap[parts[0]];
-      } 
-      else if (englishDayMap[dayStr]) {
-        day = englishDayMap[dayStr];
-      } 
-      else {
+      // Need at least day and time parts
+      if (parts.length < 2) {
+        console.warn("Schedule format incorrect, missing parts:", schedule);
         continue;
       }
       
+      // Map Korean day to English
+      const dayPart = parts[0];
+      let day: string;
+      
+      if (dayPart === '월' || dayPart.toLowerCase() === 'mon') {
+        day = 'mon';
+      } else if (dayPart === '화' || dayPart.toLowerCase() === 'tue') {
+        day = 'tue';
+      } else if (dayPart === '수' || dayPart.toLowerCase() === 'wed') {
+        day = 'wed';
+      } else if (dayPart === '목' || dayPart.toLowerCase() === 'thu') {
+        day = 'thu';
+      } else if (dayPart === '금' || dayPart.toLowerCase() === 'fri') {
+        day = 'fri';
+      } else {
+        console.warn("Unknown day format:", dayPart);
+        day = 'mon'; // Default to Monday if unknown
+      }
+      
+      // Parse time range
+      const timePart = parts[1];
+      const timeRange = timePart.split('-');
+      
+      if (timeRange.length !== 2) {
+        console.warn("Time range format incorrect:", timePart);
+        continue;
+      }
+      
+      // Ensure time format has seconds if needed
+      const startTime = ensureTimeFormat(timeRange[0]);
+      const endTime = ensureTimeFormat(timeRange[1]);
+      
       result.push({
-        day,
-        startTime: timeRange[0],
-        endTime: timeRange[1]
+        day: day as 'mon' | 'tue' | 'wed' | 'thu' | 'fri',
+        startTime,
+        endTime
       });
     }
     
+    console.log("Parsed schedule results:", result);
     return result;
   } catch (error) {
-    console.error("Error parsing schedule time:", error, "Input:", scheduleTime);
+    console.error("Error parsing schedule time:", error, scheduleTime);
     return [];
   }
+};
+
+const ensureTimeFormat = (time: string): string => {
+  // If time doesn't include seconds, add them
+  if (time.includes(':') && time.split(':').length === 2) {
+    return time;
+  }
+  
+  // If time has no colon, assume it's just hours
+  if (!time.includes(':')) {
+    // Pad with leading zero if needed
+    const hours = time.padStart(2, '0');
+    return `${hours}:00`;
+  }
+  
+  return time;
 };
 
 export const getDayLabel = (day: string): string => {

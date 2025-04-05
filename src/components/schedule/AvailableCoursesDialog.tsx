@@ -133,9 +133,15 @@ const AvailableCoursesDialog: React.FC<AvailableCoursesDialogProps> = ({ onAddCo
   const handleAddCourse = async (course: AvailableCourse) => {
     setIsAddingCourse(course.course_id);
     try {
+      console.log("Attempting to add course:", course);
+      console.log("Schedule time:", course.schedule_time);
+      
       const timeSlots = parseScheduleTime(course.schedule_time);
+      console.log("Parsed time slots:", timeSlots);
       
       if (timeSlots.length === 0) {
+        console.warn("No time slots parsed from:", course.schedule_time);
+        
         const added = await onAddCourse({
           id: course.course_id,
           name: course.course_name,
@@ -156,6 +162,8 @@ const AvailableCoursesDialog: React.FC<AvailableCoursesDialogProps> = ({ onAddCo
         }
       } else {
         const firstSlot = timeSlots[0];
+        console.log("Using time slot:", firstSlot);
+        
         const added = await onAddCourse({
           id: course.course_id,
           name: course.course_name,
@@ -175,6 +183,13 @@ const AvailableCoursesDialog: React.FC<AvailableCoursesDialogProps> = ({ onAddCo
           });
         }
       }
+    } catch (error) {
+      console.error("Error adding course:", error, "Course:", course);
+      toast({
+        title: "과목 추가 실패",
+        description: `${course.course_name} 과목을 추가하는 중 오류가 발생했습니다.`,
+        variant: "destructive",
+      });
     } finally {
       setIsAddingCourse(null);
     }
