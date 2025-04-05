@@ -201,6 +201,15 @@ const Schedule = () => {
         
       if (deptError) throw new Error(deptError.message);
       
+      // Get IDs of the courses displayed in the current schedule
+      const currentCourseIds = courses.map(course => {
+        // Extract course_id if it's from DB
+        if (course.course_id) {
+          return course.course_id;
+        } 
+        return null;
+      }).filter(id => id !== null);
+      
       // Create a more readable debug object
       const debugData = {
         userId: user.id,
@@ -208,25 +217,47 @@ const Schedule = () => {
           id: deptData.department_id,
           name: deptData.department_name
         },
-        takenCourses: courses.map(c => ({
-          id: c.course_id,
-          name: c.course_name,
-          code: c.course_code,
-          category: c.category,
-          departmentId: c.department_id
-        })),
+        takenCourses: {
+          count: courses.length,
+          ids: takenCourseIds,
+          details: courses.map(c => ({
+            id: c.course_id,
+            name: c.course_name,
+            code: c.course_code,
+            category: c.category,
+          }))
+        },
         enrolledCourseIds,
-        selectedCategories
+        selectedCategories,
+        currentScheduleCourses: {
+          count: this.courses?.length || 0,
+          ids: currentCourseIds
+        }
       };
       
       console.log("Debug information for schedule generation:", debugData);
       
       toast({
         title: "디버깅 정보",
-        description: `수강 내역: ${courses.length}과목, 선택 카테고리: ${selectedCategories.join(', ')}`,
+        description: `수강 내역: ${courses.length}과목, 현재 수강중: ${enrolledCourseIds.length}과목, 선택 카테고리: ${selectedCategories.join(', ')}`,
       });
+      
+      // Alert with key information
+      alert(
+        `디버깅 정보:\n` +
+        `- 사용자 학과: ${deptData.department_name}\n` +
+        `- 수강 완료된 과목 수: ${takenCourseIds.length}\n` +
+        `- 현재 수강 중인 과목 수: ${enrolledCourseIds.length}\n` +
+        `- 시간표 생성에 사용할 카테고리: ${selectedCategories.join(', ')}\n\n` +
+        `이 정보가 Edge Function에 전달되며, 시간표 생성 시 이미 수강한 과목과 현재 수강 중인 과목을 제외한 나머지 과목 중에서 선택됩니다.`
+      );
     } catch (error) {
       console.error("Error fetching debug data:", error);
+      toast({
+        title: "디버깅 정보 조회 실패",
+        description: error instanceof Error ? error.message : "정보를 불러오는 데 실패했습니다.",
+        variant: "destructive"
+      });
     }
   };
 

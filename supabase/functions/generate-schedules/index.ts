@@ -63,8 +63,8 @@ serve(async (req) => {
     // Log what courses are marked as taken
     console.log("User ID:", userId);
     console.log("Courses marked as taken (IDs):", takenCourseIds);
-    console.log("Categories for course search:", categories);
     console.log("Currently enrolled course IDs:", enrolledCourseIds);
+    console.log("Categories for course search:", categories);
     
     // Get detailed info about taken courses
     if (takenCourseIds && takenCourseIds.length > 0) {
@@ -77,6 +77,10 @@ serve(async (req) => {
         console.log("Detailed information about taken courses:", takenCoursesDetails);
       }
     }
+
+    // Create a combined list of courses to exclude (both taken and currently enrolled)
+    const excludedCourseIds = [...new Set([...takenCourseIds, ...enrolledCourseIds])];
+    console.log("Total excluded course IDs (taken + enrolled):", excludedCourseIds.length);
     
     // Fetch user department
     const { data: userData, error: userError } = await supabase
@@ -169,12 +173,12 @@ serve(async (req) => {
       }
     }
     
-    // Filter out courses that the user has already taken
+    // Filter out courses that the user has already taken OR is currently enrolled in
     let filteredCourses = availableCourses.filter(course => 
-      !takenCourseIds.includes(course.course_id)
+      !excludedCourseIds.includes(course.course_id)
     );
     
-    console.log(`After filtering out taken courses, ${filteredCourses.length} courses remain`);
+    console.log(`After filtering out taken and enrolled courses, ${filteredCourses.length} courses remain`);
     
     // Debug info: log first few courses before prerequisite filtering
     console.log("Sample courses before prerequisite filtering:");
@@ -209,13 +213,13 @@ serve(async (req) => {
         
         // Check if all prerequisites are in user's taken courses or currently enrolled courses
         const allPrereqsMet = prereqs.every(prereqId => 
-          takenCourseIds.includes(prereqId) || enrolledCourseIds.includes(prereqId)
+          excludedCourseIds.includes(prereqId)
         );
         
         if (!allPrereqsMet) {
           // Log which prerequisites are missing
           const missingPrereqs = prereqs.filter(prereqId => 
-            !takenCourseIds.includes(prereqId) && !enrolledCourseIds.includes(prereqId)
+            !excludedCourseIds.includes(prereqId)
           );
           
           filteredOutCourses.push({

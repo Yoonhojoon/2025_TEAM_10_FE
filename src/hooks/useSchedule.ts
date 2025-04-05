@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useToast } from "@/hooks/use-toast";
@@ -10,12 +9,9 @@ import {
   GeneratedSchedule, 
   SavedSchedule, 
   ConsolidatedCourse, 
-  CourseData 
+  CourseCategory 
 } from "@/types/schedule";
 import { parseScheduleTime, formatScheduleTime, getKoreanDayAbbreviation } from "@/utils/scheduleUtils";
-
-// Define the course category type to match the Supabase enum
-type CourseCategory = "전공필수" | "전공선택" | "전공기초" | "배분이수교과" | "자유이수교과" | "산학필수" | "기초교과";
 
 export const useSchedule = () => {
   const [courses, setCourses] = useState<ScheduleCourse[]>([]);
@@ -228,7 +224,7 @@ export const useSchedule = () => {
       
       toast({
         title: "시간표 삭제 완료",
-        description: "시간표가 성공적으로 삭제되었습니다."
+        description: "시간표가 성공적���로 삭제되었습니다."
       });
     } catch (error) {
       console.error('Error deleting schedule:', error);
@@ -242,7 +238,7 @@ export const useSchedule = () => {
     }
   };
   
-  const handleGenerateSchedules = async (categories?: string[]) => {
+  const handleGenerateSchedules = async (categories?: CourseCategory[]) => {
     if (!user) {
       toast({
         title: "로그인 필요",
@@ -265,6 +261,8 @@ export const useSchedule = () => {
       }
       
       const takenCourseIds = enrollments.map(enrollment => enrollment.course_id);
+      console.log("Taken course IDs (from enrollments):", takenCourseIds);
+      console.log("Currently displayed enrolled course IDs:", enrolledCourseIds);
       
       const { data: takenCourses, error: takenCoursesError } = await supabase
         .from('courses')
@@ -275,13 +273,8 @@ export const useSchedule = () => {
         console.log('Detailed information about taken courses:', takenCourses);
       }
       
-      // Convert the incoming string array to the proper CourseCategory type
       const defaultCategories: CourseCategory[] = ["전공필수", "전공선택", "전공기초"];
-      const courseCategories: CourseCategory[] = categories 
-        ? categories.filter((cat): cat is CourseCategory => 
-            ["전공필수", "전공선택", "전공기초", "배분이수교과", "자유이수교과", "산학필수", "기초교과"].includes(cat)
-          ) 
-        : defaultCategories;
+      const courseCategories: CourseCategory[] = categories || defaultCategories;
         
       console.log("Selected course categories for generation:", courseCategories);
       
@@ -312,15 +305,24 @@ export const useSchedule = () => {
         }
       }
       
-      console.log("Sending taken course IDs to Edge Function:", takenCourseIds);
-      console.log("Sending enrolled course IDs to Edge Function:", enrolledCourseIds);
+      const currentCourseIds = courses.map(course => {
+        if (course.id.includes("-")) {
+          return course.id;
+        } 
+        return null;
+      }).filter(id => id !== null) as string[];
+      
+      console.log("Current course IDs in displayed schedule:", currentCourseIds);
+      
+      const combinedEnrolledIds = [...new Set([...enrolledCourseIds, ...currentCourseIds])];
+      console.log("Combined IDs of courses to exclude:", combinedEnrolledIds);
       
       const payload = {
         userId: user.id,
         takenCourseIds,
         categories: courseCategories,
         courseOverlapCheckPriority: true,
-        enrolledCourseIds
+        enrolledCourseIds: combinedEnrolledIds
       };
       
       console.log("Full payload being sent to the Edge Function:", payload);
