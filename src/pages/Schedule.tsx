@@ -173,7 +173,7 @@ const Schedule = () => {
         
       if (enrollmentsError) throw new Error(enrollmentsError.message);
       
-      const takenCourseIds = enrollments.map(e => e.course_id);
+      const takenCourseIds = enrollments?.map(e => e.course_id) || [];
       
       // Get course details
       const { data: courses, error: coursesError } = await supabase
@@ -202,13 +202,13 @@ const Schedule = () => {
       if (deptError) throw new Error(deptError.message);
       
       // Get IDs of the courses displayed in the current schedule
-      const currentCourseIds = courses.map(course => {
+      const currentCourseIds = courses?.map(course => {
         // Extract course_id if it's from DB
         if (course.course_id) {
           return course.course_id;
         } 
         return null;
-      }).filter(id => id !== null);
+      }).filter(id => id !== null) as string[];
       
       // Create a more readable debug object
       const debugData = {
@@ -218,9 +218,9 @@ const Schedule = () => {
           name: deptData.department_name
         },
         takenCourses: {
-          count: courses.length,
+          count: courses?.length || 0,
           ids: takenCourseIds,
-          details: courses.map(c => ({
+          details: courses?.map(c => ({
             id: c.course_id,
             name: c.course_name,
             code: c.course_code,
@@ -239,7 +239,7 @@ const Schedule = () => {
       
       toast({
         title: "디버깅 정보",
-        description: `수강 내역: ${courses.length}과목, 현재 수강중: ${enrolledCourseIds.length}과목, 선택 카테고리: ${selectedCategories.join(', ')}`,
+        description: `수강 내역: ${courses?.length || 0}과목, 현재 수강중: ${enrolledCourseIds.length}과목, 선택 카테고리: ${selectedCategories.join(', ')}`,
       });
       
       // Alert with key information

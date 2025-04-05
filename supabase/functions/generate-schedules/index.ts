@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 
@@ -22,7 +21,7 @@ interface Schedule {
   과목들: Array<{
     course_id: string;
     과목_이름: string;
-    학수번호: string;
+    학수번��: string;
     학점: number;
     강의_시간: string;
     강의실: string;
@@ -51,7 +50,7 @@ serve(async (req) => {
     const requestBody = await req.json();
     console.log("Full request body received by Edge Function:", JSON.stringify(requestBody, null, 2));
     
-    const { userId, takenCourseIds, categories = ["전공필수", "전공선택", "전공기초"], courseOverlapCheckPriority = true, enrolledCourseIds = [] } = requestBody;
+    const { userId, enrolledCourseIds = [], categories = ["전공필수", "전공선택", "전공기초"], courseOverlapCheckPriority = true } = requestBody;
     
     if (!userId) {
       return new Response(
@@ -60,28 +59,23 @@ serve(async (req) => {
       );
     }
     
-    // Log what courses are marked as taken
+    // Log what courses are marked as taken/enrolled
     console.log("User ID:", userId);
-    console.log("Courses marked as taken (IDs):", takenCourseIds);
-    console.log("Currently enrolled course IDs:", enrolledCourseIds);
+    console.log("Courses marked as enrolled/taken (IDs):", enrolledCourseIds);
     console.log("Categories for course search:", categories);
     
     // Get detailed info about taken courses
-    if (takenCourseIds && takenCourseIds.length > 0) {
-      const { data: takenCoursesDetails, error: takenCoursesError } = await supabase
+    if (enrolledCourseIds && enrolledCourseIds.length > 0) {
+      const { data: enrolledCoursesDetails, error: enrolledCoursesError } = await supabase
         .from('courses')
         .select('course_id, course_name, course_code, category')
-        .in('course_id', takenCourseIds);
+        .in('course_id', enrolledCourseIds);
         
-      if (!takenCoursesError && takenCoursesDetails) {
-        console.log("Detailed information about taken courses:", takenCoursesDetails);
+      if (!enrolledCoursesError && enrolledCoursesDetails) {
+        console.log("Detailed information about enrolled/taken courses:", enrolledCoursesDetails);
       }
     }
 
-    // Create a combined list of courses to exclude (both taken and currently enrolled)
-    const excludedCourseIds = [...new Set([...takenCourseIds, ...enrolledCourseIds])];
-    console.log("Total excluded course IDs (taken + enrolled):", excludedCourseIds.length);
-    
     // Fetch user department
     const { data: userData, error: userError } = await supabase
       .from('users')
@@ -175,10 +169,10 @@ serve(async (req) => {
     
     // Filter out courses that the user has already taken OR is currently enrolled in
     let filteredCourses = availableCourses.filter(course => 
-      !excludedCourseIds.includes(course.course_id)
+      !enrolledCourseIds.includes(course.course_id)
     );
     
-    console.log(`After filtering out taken and enrolled courses, ${filteredCourses.length} courses remain`);
+    console.log(`After filtering out enrolled courses, ${filteredCourses.length} courses remain`);
     
     // Debug info: log first few courses before prerequisite filtering
     console.log("Sample courses before prerequisite filtering:");
@@ -211,15 +205,15 @@ serve(async (req) => {
           return true;
         }
         
-        // Check if all prerequisites are in user's taken courses or currently enrolled courses
+        // Check if all prerequisites are in user's enrolled/taken courses
         const allPrereqsMet = prereqs.every(prereqId => 
-          excludedCourseIds.includes(prereqId)
+          enrolledCourseIds.includes(prereqId)
         );
         
         if (!allPrereqsMet) {
           // Log which prerequisites are missing
           const missingPrereqs = prereqs.filter(prereqId => 
-            !excludedCourseIds.includes(prereqId)
+            !enrolledCourseIds.includes(prereqId)
           );
           
           filteredOutCourses.push({
@@ -459,7 +453,7 @@ function createBalancedSchedule(categoryCourses: Record<string, Course[]>, name:
     과목들: selectedCourses.map(course => ({
       course_id: course.course_id,
       과목_이름: course.course_name,
-      학수번호: course.course_code,
+      학수번��: course.course_code,
       학점: course.credit,
       강의_시간: course.schedule_time,
       강의실: course.classroom
@@ -496,7 +490,7 @@ function createSchedule(sortedCourses: Course[], name: string, strictTimeCheck =
     과목들: selectedCourses.map(course => ({
       course_id: course.course_id,
       과목_이름: course.course_name,
-      학수번호: course.course_code,
+      학수번��: course.course_code,
       학점: course.credit,
       강의_시간: course.schedule_time,
       강의실: course.classroom

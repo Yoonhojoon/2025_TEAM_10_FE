@@ -230,7 +230,7 @@ export const useSchedule = () => {
       console.error('Error deleting schedule:', error);
       toast({
         title: "시간표 삭제 실패",
-        description: error instanceof Error ? error.message : "시간표를 삭제하는데 실패했습니다.",
+        description: error instanceof Error ? error.message : "��간표를 삭제하는데 실패했습니다.",
         variant: "destructive"
       });
     } finally {
@@ -251,32 +251,11 @@ export const useSchedule = () => {
     setIsGeneratingSchedules(true);
     
     try {
-      const { data: enrollments, error: enrollmentsError } = await supabase
-        .from('enrollments')
-        .select('course_id')
-        .eq('user_id', user.id);
-        
-      if (enrollmentsError) {
-        throw new Error('수강 내역을 불러오는데 실패했습니다.');
+      if (enrolledCourseIds.length === 0) {
+        await fetchEnrolledCourses();
       }
       
-      const takenCourseIds = enrollments.map(enrollment => enrollment.course_id);
-      console.log("Taken course IDs (from enrollments):", takenCourseIds);
-      console.log("Currently displayed enrolled course IDs:", enrolledCourseIds);
-      
-      const { data: takenCourses, error: takenCoursesError } = await supabase
-        .from('courses')
-        .select('course_id, course_name, course_code, category, credit')
-        .in('course_id', takenCourseIds);
-        
-      if (!takenCoursesError && takenCourses) {
-        console.log('Detailed information about taken courses:', takenCourses);
-      }
-      
-      const defaultCategories: CourseCategory[] = ["전공필수", "전공선택", "전공기초"];
-      const courseCategories: CourseCategory[] = categories || defaultCategories;
-        
-      console.log("Selected course categories for generation:", courseCategories);
+      console.log("Enrolled/Taken course IDs:", enrolledCourseIds);
       
       const { data: userData, error: userError } = await supabase
         .from('users')
@@ -284,25 +263,32 @@ export const useSchedule = () => {
         .eq('user_id', user.id)
         .single();
         
-      if (!userError && userData) {
-        console.log("User's department ID:", userData.department_id);
+      if (userError) {
+        throw new Error('사용자 학과 정보를 불러오는데 실패했습니다.');
+      }
+      
+      console.log("User's department ID:", userData.department_id);
+      
+      const defaultCategories: CourseCategory[] = ["전공필수", "전공선택", "전공기초"];
+      const courseCategories: CourseCategory[] = categories || defaultCategories;
+      
+      console.log("Selected course categories for generation:", courseCategories);
+      
+      const { data: availableCourses, error: availableCoursesError } = await supabase
+        .from('courses')
+        .select('course_id, course_name, course_code, category, credit')
+        .in('category', courseCategories)
+        .eq('department_id', userData.department_id);
         
-        const { data: availableCourses, error: availableCoursesError } = await supabase
-          .from('courses')
-          .select('course_id, course_name, course_code, category, credit')
-          .in('category', courseCategories)
-          .eq('department_id', userData.department_id);
-          
-        if (!availableCoursesError && availableCourses) {
-          console.log(`Total courses available in selected categories: ${availableCourses.length}`);
-          
-          const notTakenCourses = availableCourses.filter(
-            course => !takenCourseIds.includes(course.course_id)
-          );
-          
-          console.log(`Courses not taken by user: ${notTakenCourses.length}`);
-          console.log("Sample of available non-taken courses:", notTakenCourses.slice(0, 10));
-        }
+      if (!availableCoursesError && availableCourses) {
+        console.log(`Total courses available in selected categories: ${availableCourses.length}`);
+        
+        const notTakenCourses = availableCourses.filter(
+          course => !enrolledCourseIds.includes(course.course_id)
+        );
+        
+        console.log(`Courses not taken by user: ${notTakenCourses.length}`);
+        console.log("Sample of available non-taken courses:", notTakenCourses.slice(0, 10));
       }
       
       const currentCourseIds = courses.map(course => {
@@ -314,15 +300,11 @@ export const useSchedule = () => {
       
       console.log("Current course IDs in displayed schedule:", currentCourseIds);
       
-      const combinedEnrolledIds = [...new Set([...enrolledCourseIds, ...currentCourseIds])];
-      console.log("Combined IDs of courses to exclude:", combinedEnrolledIds);
-      
       const payload = {
         userId: user.id,
-        takenCourseIds,
+        enrolledCourseIds,
         categories: courseCategories,
-        courseOverlapCheckPriority: true,
-        enrolledCourseIds: combinedEnrolledIds
+        courseOverlapCheckPriority: true
       };
       
       console.log("Full payload being sent to the Edge Function:", payload);
