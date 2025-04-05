@@ -14,6 +14,6 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     persistSession: true
   },
   global: {
-    fetch: (...args) => fetch(...args)
+    fetch: (url: RequestInfo | URL, options?: RequestInit) => fetch(url, options)
   }
 });
