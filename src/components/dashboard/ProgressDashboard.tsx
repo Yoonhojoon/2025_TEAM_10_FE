@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/common/Card";
 import { ProgressBar } from "@/components/common/ProgressBar";
 import { ArrowUpRight, Award, BookOpen, GraduationCap, Layers } from "lucide-react";
@@ -58,11 +59,12 @@ const ProgressDashboard = ({ data }: { data: ProgressData }) => {
   // 모달 상태 관리
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
-  const [selectedCategoryKorean, setSelectedCategoryKorean] = useState<string>("");
+  const [selectedCategoryKorean, setSelectedCategoryKorean] = useState<DbCourse['category']>("전공필수");
   
   // 카테고리 클릭 핸들러
   const handleCategoryClick = (category: string) => {
     setSelectedCategory(category);
+    // The following line was causing the type error - we need to ensure it's properly typed
     setSelectedCategoryKorean(categoryMapping[category]);
     setModalOpen(true);
   };
