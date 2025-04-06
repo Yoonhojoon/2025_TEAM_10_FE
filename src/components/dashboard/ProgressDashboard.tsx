@@ -1,10 +1,10 @@
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/common/Card";
 import { ProgressBar } from "@/components/common/ProgressBar";
 import { ArrowUpRight, Award, BookOpen, GraduationCap, Layers } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useState } from "react";
 import CourseProgressModal from "./CourseProgressModal";
+import { DbCourse } from "@/components/courses/types"; // Add this import
 
 interface ProgressData {
   overall: number;
@@ -41,7 +41,7 @@ interface ProgressData {
 
 // 카테고리 매핑 정보
 interface CategoryMap {
-  [key: string]: string;
+  [key: string]: DbCourse['category']; // Update: Improve typing of the category mapping
 }
 
 const categoryMapping: CategoryMap = {

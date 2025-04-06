@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { 
@@ -20,7 +19,7 @@ interface CourseProgressModalProps {
   isOpen: boolean;
   onClose: () => void;
   category: string; // This is the English category from ProgressDashboard
-  categoryKorean: string; // This is already the Korean category
+  categoryKorean: DbCourse['category']; // Update: Now correctly typed to match the expected category type
 }
 
 const CourseProgressModal = ({ isOpen, onClose, category, categoryKorean }: CourseProgressModalProps) => {
