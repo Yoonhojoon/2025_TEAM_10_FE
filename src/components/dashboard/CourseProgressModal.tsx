@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { 
@@ -37,6 +38,7 @@ const CourseProgressModal = ({ isOpen, onClose, category, categoryKorean }: Cour
       setIsLoading(true);
       
       try {
+        // Get user's completed courses through enrollments
         const { data: enrollments, error: enrollmentError } = await supabase
           .from('enrollments')
           .select(`
@@ -58,11 +60,12 @@ const CourseProgressModal = ({ isOpen, onClose, category, categoryKorean }: Cour
         
         if (departmentError) throw departmentError;
         
+        // Get all courses in the user's department and specified category
         const { data: allCourses, error: coursesError } = await supabase
           .from('courses')
           .select('*')
           .eq('department_id', departmentData.department_id)
-          .eq('category', categoryKorean as DbCourse['category']);
+          .eq('category', categoryKorean);
           
         if (coursesError) throw coursesError;
         
@@ -70,6 +73,7 @@ const CourseProgressModal = ({ isOpen, onClose, category, categoryKorean }: Cour
           .filter(e => e.courses?.category === categoryKorean)
           .map(e => e.course_id);
         
+        // Filter completed courses
         const completed = allCourses
           .filter(course => completedCourseIds.includes(course.course_id))
           .sort((a, b) => {
@@ -78,16 +82,23 @@ const CourseProgressModal = ({ isOpen, onClose, category, categoryKorean }: Cour
             return (a.grade || 0) - (b.grade || 0);
           });
         
+        // Filter remaining courses
         const remaining = allCourses
           .filter(course => !completedCourseIds.includes(course.course_id))
           .sort((a, b) => {
-            if (a.grade === null) return 1;
-            if (b.grade === null) return -1;
-            return (a.grade || 0) - (b.grade || 0);
+            // Special handling for grade 0 (which is valid)
+            const gradeA = a.grade === null ? 999 : a.grade;
+            const gradeB = b.grade === null ? 999 : b.grade;
+            return gradeA - gradeB;
           });
         
         setCompletedCourses(completed);
         setRemainingCourses(remaining);
+        
+        console.log("Category:", categoryKorean);
+        console.log("All courses:", allCourses.length);
+        console.log("Completed courses:", completed.length);
+        console.log("Remaining courses:", remaining.length);
       } catch (error) {
         console.error("Error fetching course progress:", error);
       } finally {
@@ -191,11 +202,11 @@ const CourseTable = ({ courses, isEmpty, type, userGrade }: CourseTableProps) =>
           {courses.map((course) => (
             <TableRow 
               key={course.course_id}
-              className={course.grade && userGrade > course.grade ? "bg-red-100/50 dark:bg-red-900/20" : ""}
+              className={course.grade !== null && userGrade < course.grade ? "bg-red-100/50 dark:bg-red-900/20" : ""}
             >
               <TableCell className="font-medium">{course.course_code}</TableCell>
               <TableCell>{course.course_name}</TableCell>
-              <TableCell>{course.grade || "-"}</TableCell>
+              <TableCell>{course.grade === null ? "-" : course.grade}</TableCell>
               <TableCell className="text-right">{course.credit}</TableCell>
             </TableRow>
           ))}
