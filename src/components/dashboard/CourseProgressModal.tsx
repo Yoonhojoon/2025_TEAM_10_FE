@@ -37,7 +37,6 @@ const CourseProgressModal = ({ isOpen, onClose, category, categoryKorean }: Cour
       setIsLoading(true);
       
       try {
-        // Get user's completed courses through enrollments
         const { data: enrollments, error: enrollmentError } = await supabase
           .from('enrollments')
           .select(`
@@ -51,7 +50,6 @@ const CourseProgressModal = ({ isOpen, onClose, category, categoryKorean }: Cour
         const departmentName = user.user_metadata?.department;
         if (!departmentName) throw new Error("Department information not found");
         
-        // Get department_id for user's department
         const { data: departmentData, error: departmentError } = await supabase
           .from('departments')
           .select('department_id')
@@ -60,27 +58,22 @@ const CourseProgressModal = ({ isOpen, onClose, category, categoryKorean }: Cour
         
         if (departmentError) throw departmentError;
 
-        // Get department_id for '전체' (All/Global) department if it exists
         const { data: globalDepartmentData, error: globalDepartmentError } = await supabase
           .from('departments')
           .select('department_id')
           .eq('department_name', '전체')
           .maybeSingle();
         
-        // It's okay if global department doesn't exist
         const globalDepartmentId = globalDepartmentData?.department_id;
           
-        // Get all courses in the user's department and specified category
         let query = supabase
           .from('courses')
           .select('*')
           .eq('category', categoryKorean);
           
         if (globalDepartmentId) {
-          // If global department exists, get courses from both user's department and global department
           query = query.or(`department_id.eq.${departmentData.department_id},department_id.eq.${globalDepartmentId}`);
         } else {
-          // Otherwise, just get courses from user's department
           query = query.eq('department_id', departmentData.department_id);
         }
         
@@ -92,7 +85,6 @@ const CourseProgressModal = ({ isOpen, onClose, category, categoryKorean }: Cour
           .filter(e => e.courses?.category === categoryKorean)
           .map(e => e.course_id);
         
-        // Filter completed courses
         const completed = allCourses
           .filter(course => completedCourseIds.includes(course.course_id))
           .sort((a, b) => {
@@ -101,11 +93,9 @@ const CourseProgressModal = ({ isOpen, onClose, category, categoryKorean }: Cour
             return (a.grade || 0) - (b.grade || 0);
           });
         
-        // Filter remaining courses
         const remaining = allCourses
           .filter(course => !completedCourseIds.includes(course.course_id))
           .sort((a, b) => {
-            // Special handling for grade 0 (which is valid)
             const gradeA = a.grade === null ? 999 : a.grade;
             const gradeB = b.grade === null ? 999 : b.grade;
             return gradeA - gradeB;
@@ -221,7 +211,7 @@ const CourseTable = ({ courses, isEmpty, type, userGrade }: CourseTableProps) =>
           {courses.map((course) => (
             <TableRow 
               key={course.course_id}
-              className={course.grade !== null && userGrade < course.grade ? "bg-red-100/50 dark:bg-red-900/20" : ""}
+              className={course.grade !== null && userGrade > course.grade ? "bg-red-100/50 dark:bg-red-900/20" : ""}
             >
               <TableCell className="font-medium">{course.course_code}</TableCell>
               <TableCell>{course.course_name}</TableCell>
