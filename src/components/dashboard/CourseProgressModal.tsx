@@ -51,6 +51,7 @@ const CourseProgressModal = ({ isOpen, onClose, category, categoryKorean }: Cour
         const departmentName = user.user_metadata?.department;
         if (!departmentName) throw new Error("Department information not found");
         
+        // Get department_id for user's department
         const { data: departmentData, error: departmentError } = await supabase
           .from('departments')
           .select('department_id')
@@ -58,13 +59,32 @@ const CourseProgressModal = ({ isOpen, onClose, category, categoryKorean }: Cour
           .single();
         
         if (departmentError) throw departmentError;
+
+        // Get department_id for '전체' (All/Global) department if it exists
+        const { data: globalDepartmentData, error: globalDepartmentError } = await supabase
+          .from('departments')
+          .select('department_id')
+          .eq('department_name', '전체')
+          .maybeSingle();
         
+        // It's okay if global department doesn't exist
+        const globalDepartmentId = globalDepartmentData?.department_id;
+          
         // Get all courses in the user's department and specified category
-        const { data: allCourses, error: coursesError } = await supabase
+        let query = supabase
           .from('courses')
           .select('*')
-          .eq('department_id', departmentData.department_id)
           .eq('category', categoryKorean);
+          
+        if (globalDepartmentId) {
+          // If global department exists, get courses from both user's department and global department
+          query = query.or(`department_id.eq.${departmentData.department_id},department_id.eq.${globalDepartmentId}`);
+        } else {
+          // Otherwise, just get courses from user's department
+          query = query.eq('department_id', departmentData.department_id);
+        }
+        
+        const { data: allCourses, error: coursesError } = await query;
           
         if (coursesError) throw coursesError;
         
